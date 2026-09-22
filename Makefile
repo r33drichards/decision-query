@@ -1,27 +1,10 @@
 SHELL := /bin/bash
 VERSION=$(shell cat VERSION)
-CMAKE_VERSION=$(shell sed 's/-alpha//g' VERSION)
 
 ifeq ($(shell uname -s),Darwin)
-CONFIG_DARWIN=y
-else ifeq ($(OS),Windows_NT)
-CONFIG_WINDOWS=y
-else
-CONFIG_LINUX=y
-endif
-
-LIBRARY_PREFIX=lib
-ifdef CONFIG_DARWIN
 LOADABLE_EXTENSION=dylib
-endif
-
-ifdef CONFIG_LINUX
+else
 LOADABLE_EXTENSION=so
-endif
-
-ifdef CONFIG_WINDOWS
-LOADABLE_EXTENSION=dll
-LIBRARY_PREFIX=
 endif
 
 ifdef IS_MACOS_ARM
@@ -37,60 +20,60 @@ PYTHON=python3
 endif
 
 PREFIX=dist
+BUILD=build
+BUILD_RELEASE=build_release
+CMAKE_FLAGS?=
+SOURCES=CMakeLists.txt VERSION engine/CMakeLists.txt engine/laya_engine.hpp \
+	sqlite/CMakeLists.txt sqlite/src/sqlaya.cpp sqlite/src/sqlaya.h.in
 
-# Loadable Output
-TARGET_LOADABLE_FILE=$(PREFIX)/debug/rot13.$(LOADABLE_EXTENSION)
+# SQLite loadable module
+TARGET_LOADABLE_FILE=$(PREFIX)/debug/laya.$(LOADABLE_EXTENSION)
 TARGET_LOADABLE=$(TARGET_LOADABLE_FILE)
-TARGET_LOADABLE_RELEASE_FILE=$(PREFIX)/release/rot13.$(LOADABLE_EXTENSION)
+TARGET_LOADABLE_RELEASE_FILE=$(PREFIX)/release/laya.$(LOADABLE_EXTENSION)
 TARGET_LOADABLE_RELEASE=$(TARGET_LOADABLE_RELEASE_FILE)
 
-# Static Output
-TARGET_STATIC_FILE=$(PREFIX)/debug/libsqlite_rot13.a
-TARGET_STATIC_VECTOR_H=$(PREFIX)/debug/rot13.h
-TARGET_STATIC=$(TARGET_STATIC_FILE) $(TARGET_STATIC_VECTOR_H)
-TARGET_STATIC_RELEASE_FILE=$(PREFIX)/release/libsqlite_rot13.a
-TARGET_STATIC_RELEASE_VECTOR_H=$(PREFIX)/release/rot13.h
-TARGET_STATIC_RELEASE=$(TARGET_STATIC_RELEASE_FILE) $(TARGET_STATIC_RELEASE_VECTOR_H)
+# SQLite static library
+TARGET_STATIC_FILE=$(PREFIX)/debug/libsqlite_laya.a
+TARGET_STATIC_H=$(PREFIX)/debug/sqlaya.h
+TARGET_STATIC=$(TARGET_STATIC_FILE) $(TARGET_STATIC_H)
+TARGET_STATIC_RELEASE_FILE=$(PREFIX)/release/libsqlite_laya.a
+TARGET_STATIC_RELEASE_H=$(PREFIX)/release/sqlaya.h
+TARGET_STATIC_RELEASE=$(TARGET_STATIC_RELEASE_FILE) $(TARGET_STATIC_RELEASE_H)
 
-# WASM Output
-WASM_DIRS = api bld common fiddle jaccwabyt jswasm sql tests
-WASM_RELEASE_DIRS = common jswasm
-WASM_EXTS = js html mjs
-TARGET_WASM = $(foreach ext,$(WASM_EXTS),$(wildcard build/wasm/*.$(ext))) $(foreach dir,$(WASM_DIRS),$(wildcard build/wasm/$(dir)))
-TARGET_WASM_RELEASE = $(foreach ext,$(WASM_EXTS),$(wildcard build_release/wasm/*.$(ext))) $(foreach dir,$(WASM_RELEASE_DIRS),$(wildcard build_release/wasm/$(dir)))
-
-# Python Output
-INTERMEDIATE_PYPACKAGE_EXTENSION=bindings/python/sqlite_rot13/
+# Python package
+PYTHON_PACKAGE=sqlite/bindings/python
+INTERMEDIATE_PYPACKAGE_EXTENSION=$(PYTHON_PACKAGE)/sqlite_laya/
 TARGET_WHEELS=$(PREFIX)/debug/wheels
 TARGET_WHEELS_RELEASE=$(PREFIX)/release/wheels
+
+# PostgreSQL extension (postgres/), built in the same tree
+PG_CMAKE_FLAGS=-DSQLAYA_POSTGRES=ON $(if $(LAYA_MODEL_DIR),-DLAYA_MODEL_DIR=$(abspath $(LAYA_MODEL_DIR))) $(if $(LAYA_OPTIONS),'-DLAYA_OPTIONS=$(LAYA_OPTIONS)')
+
+# Model store
+MODEL_DIR=models/laya
+MODEL_VARIANT?=english
 
 $(PREFIX):
 	mkdir -p $(PREFIX)/debug
 	mkdir -p $(PREFIX)/release
 
-$(TARGET_LOADABLE): export SQLITE_CMAKE_VERSION = $(CMAKE_VERSION)
-$(TARGET_LOADABLE_RELEASE): export SQLITE_CMAKE_VERSION = $(CMAKE_VERSION)
+$(TARGET_LOADABLE): $(PREFIX) $(SOURCES)
+	cmake -S . -B $(BUILD) $(CMAKE_FLAGS) && cmake --build $(BUILD) --parallel --target sqlaya
+	cp $(BUILD)/sqlite/laya.$(LOADABLE_EXTENSION) $(TARGET_LOADABLE_FILE)
 
-$(TARGET_LOADABLE): $(PREFIX) src/rot13.c
-	cmake -S . -B build && cmake --build build
-	cp build/rot13.$(LOADABLE_EXTENSION) $(TARGET_LOADABLE_FILE)
+$(TARGET_LOADABLE_RELEASE): $(PREFIX) $(SOURCES)
+	cmake -DCMAKE_BUILD_TYPE=Release -S . -B $(BUILD_RELEASE) $(CMAKE_FLAGS) && cmake --build $(BUILD_RELEASE) --parallel --target sqlaya
+	cp $(BUILD_RELEASE)/sqlite/laya.$(LOADABLE_EXTENSION) $(TARGET_LOADABLE_RELEASE_FILE)
 
-$(TARGET_LOADABLE_RELEASE): $(PREFIX) src/rot13.c
-	cmake -DCMAKE_BUILD_TYPE=Release -S . -B build_release && cmake --build build_release
-	cp build_release/rot13.$(LOADABLE_EXTENSION) $(TARGET_LOADABLE_RELEASE_FILE)
+$(TARGET_STATIC): $(PREFIX) $(SOURCES)
+	cmake -S . -B $(BUILD) $(CMAKE_FLAGS) && cmake --build $(BUILD) --parallel --target sqlaya-static
+	cp $(BUILD)/sqlite/libsqlite_laya.a $(TARGET_STATIC_FILE)
+	cp $(BUILD)/sqlite/sqlaya.h $(TARGET_STATIC_H)
 
-$(TARGET_STATIC): export SQLITE_CMAKE_VERSION = $(CMAKE_VERSION)
-$(TARGET_STATIC_RELEASE): export SQLITE_CMAKE_VERSION = $(CMAKE_VERSION)
-
-$(TARGET_STATIC): $(prefix) VERSION src/rot13.c
-	cmake -S . -B build && cmake --build build
-	cp build/libsqlite_rot13.a $(TARGET_STATIC_FILE)
-	cp build/rot13.h $(TARGET_STATIC_VECTOR_H)
-
-$(TARGET_STATIC_RELEASE): $(prefix) VERSION src/rot13.c
-	cmake -DCMAKE_BUILD_TYPE=Release -S . -B build_release && cmake --build build_release
-	cp build_release/libsqlite_rot13.a $(TARGET_STATIC_RELEASE_FILE)
-	cp build_release/rot13.h $(TARGET_STATIC_RELEASE_VECTOR_H)
+$(TARGET_STATIC_RELEASE): $(PREFIX) $(SOURCES)
+	cmake -DCMAKE_BUILD_TYPE=Release -S . -B $(BUILD_RELEASE) $(CMAKE_FLAGS) && cmake --build $(BUILD_RELEASE) --parallel --target sqlaya-static
+	cp $(BUILD_RELEASE)/sqlite/libsqlite_laya.a $(TARGET_STATIC_RELEASE_FILE)
+	cp $(BUILD_RELEASE)/sqlite/sqlaya.h $(TARGET_STATIC_RELEASE_H)
 
 $(TARGET_WHEELS): $(PREFIX)
 	mkdir -p $(TARGET_WHEELS)
@@ -104,55 +87,61 @@ loadable-release: $(TARGET_LOADABLE_RELEASE)
 static: $(TARGET_STATIC)
 static-release: $(TARGET_STATIC_RELEASE)
 
-clean: 
-	rm -r dist/*
+# Builds the laya command line tool from the submodule; used by the parity test.
+cli: loadable
+	cmake --build $(BUILD) --parallel --target laya-cli
 
-wasm-build: $(TARGET_LOADABLE)
-	make -C build wasm
+clean:
+	rm -rf dist/*
 
-wasm: wasm-build
-	mkdir -p dist/debug/wasm
-	cp -r ${TARGET_WASM} dist/debug/wasm/
-	echo "✅ generated wasm"
-
-wasm-build-release: $(TARGET_LOADABLE_RELEASE)
-	make -C build_release wasm
-
-wasm-release: wasm-build-release
-	mkdir -p dist/release/wasm
-	cp -r ${TARGET_WASM_RELEASE} dist/release/wasm/
-	cp dist/release/wasm/index-dist.html dist/release/wasm/index.html
-	echo "✅ generated release wasm"
-
-python: $(TARGET_WHEELS) $(TARGET_LOADABLE) bindings/python/setup.py bindings/python/sqlite_rot13/__init__.py scripts/rename-wheels.py
+python: $(TARGET_WHEELS) $(TARGET_LOADABLE) $(PYTHON_PACKAGE)/setup.py $(PYTHON_PACKAGE)/sqlite_laya/__init__.py sqlite/scripts/rename-wheels.py
 	cp $(TARGET_LOADABLE_FILE) $(INTERMEDIATE_PYPACKAGE_EXTENSION)
-	rm $(TARGET_WHEELS)/sqlite_rot13* || true
-	pip3 wheel bindings/python/ -w $(TARGET_WHEELS)
-	python3 scripts/rename-wheels.py $(TARGET_WHEELS) $(RENAME_WHEELS_ARGS)
+	rm $(TARGET_WHEELS)/sqlite_laya* || true
+	$(PYTHON) -m pip wheel $(PYTHON_PACKAGE)/ -w $(TARGET_WHEELS)
+	$(PYTHON) sqlite/scripts/rename-wheels.py $(TARGET_WHEELS) $(RENAME_WHEELS_ARGS)
 	echo "✅ generated python wheel"
 
-python-release: $(TARGET_WHEELS_RELEASE) $(TARGET_LOADABLE_RELEASE) bindings/python/setup.py bindings/python/sqlite_rot13/__init__.py scripts/rename-wheels.py
+python-release: $(TARGET_WHEELS_RELEASE) $(TARGET_LOADABLE_RELEASE) $(PYTHON_PACKAGE)/setup.py $(PYTHON_PACKAGE)/sqlite_laya/__init__.py sqlite/scripts/rename-wheels.py
 	cp $(TARGET_LOADABLE_RELEASE_FILE) $(INTERMEDIATE_PYPACKAGE_EXTENSION)
-	rm $(TARGET_WHEELS_RELEASE)/sqlite_rot13* || true
-	pip3 wheel bindings/python/ -w $(TARGET_WHEELS_RELEASE)
-	python3 scripts/rename-wheels.py $(TARGET_WHEELS_RELEASE) $(RENAME_WHEELS_ARGS)
+	rm $(TARGET_WHEELS_RELEASE)/sqlite_laya* || true
+	$(PYTHON) -m pip wheel $(PYTHON_PACKAGE)/ -w $(TARGET_WHEELS_RELEASE)
+	$(PYTHON) sqlite/scripts/rename-wheels.py $(TARGET_WHEELS_RELEASE) $(RENAME_WHEELS_ARGS)
 	echo "✅ generated release python wheel"
 
-python-versions: bindings/python/version.py.tmpl
-	VERSION=$(VERSION) envsubst < bindings/python/version.py.tmpl > bindings/python/sqlite_rot13/version.py
-	echo "✅ generated bindings/python/sqlite_rot13/version.py"
+python-versions: $(PYTHON_PACKAGE)/version.py.tmpl
+	VERSION=$(VERSION) envsubst < $(PYTHON_PACKAGE)/version.py.tmpl > $(PYTHON_PACKAGE)/sqlite_laya/version.py
+	echo "✅ generated $(PYTHON_PACKAGE)/sqlite_laya/version.py"
+
+# Downloads a pinned Laya checkpoint (requires `pip install huggingface_hub`).
+model:
+	$(PYTHON) laya.cpp/scripts/download_model.py --variant $(MODEL_VARIANT)
+	mkdir -p $(dir $(MODEL_DIR))
+	rm -rf $(MODEL_DIR)
+	mv laya.cpp/models/laya $(MODEL_DIR)
+	echo "✅ downloaded $(MODEL_VARIANT) checkpoint to $(MODEL_DIR)"
+
+postgres:
+	cmake -S . -B $(BUILD) $(CMAKE_FLAGS) $(PG_CMAKE_FLAGS) && cmake --build $(BUILD) --parallel --target pglaya
+
+# Installs into the PostgreSQL directories reported by pg_config (may need sudo).
+postgres-install: postgres
+	cmake --install $(BUILD)
+
+# Runs pg_regress on a temporary instance; the extension must be installed.
+test-postgres:
+	ctest --test-dir $(BUILD) --output-on-failure
 
 test-loadable:
-	$(PYTHON) tests/test-loadable.py
+	$(PYTHON) sqlite/tests/test-loadable.py
 
 test-python:
-	$(PYTHON) tests/test-python.py
+	$(PYTHON) sqlite/tests/test-python.py
 
 test:
 	make test-loadable
 	make test-python
 
 .PHONY: clean test \
-	loadable loadable-release static static-release \
-	wasm-build wasm wasm-release \
-	python python-release python-versions version
+	loadable loadable-release static static-release cli \
+	python python-release python-versions model \
+	postgres postgres-install test-postgres test-loadable test-python

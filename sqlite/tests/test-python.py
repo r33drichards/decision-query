@@ -1,17 +1,17 @@
 import unittest
 import sqlite3
-import sqlite_rot13
+import sqlite_laya
 
-class TestSqliteVectorPython(unittest.TestCase):
+class TestSqliteLayaPython(unittest.TestCase):
   def test_path(self):
-    self.assertEqual(type(sqlite_rot13.loadable_path()), str)
+    self.assertEqual(type(sqlite_laya.loadable_path()), str)
   
   def test_load(self):
     db = sqlite3.connect(':memory:')
     db.enable_load_extension(True)
-    sqlite_rot13.load(db)
+    sqlite_laya.load(db)
 
-    version, = db.execute('select rot13_version()').fetchone()
+    version, = db.execute('select laya_version()').fetchone()
     self.assertEqual(version[0], "v")
     
 if __name__ == '__main__':

@@ -3,7 +3,7 @@ import os
 import platform
 
 version = {}
-with open("sqlite_rot13/version.py") as fp:
+with open("sqlite_laya/version.py") as fp:
     exec(fp.read(), version)
 
 VERSION = version['__version__']
@@ -26,16 +26,16 @@ else:
   raise Exception("unsupported platform")
 
 setup(
-    name="sqlite-rot13",
-    description="",
-    long_description="",
+    name="sqlite-laya",
+    description="SQLite extension for querying data with Laya typed decisions",
+    long_description="SQLite extension for querying data with Laya typed decisions",
     long_description_content_type="text/markdown",
-    author="Author Name",
-    url="https://github.com/user/sqlite-rot13",
-    license="MIT License, Apache License, Version 2.0",
+    author="r33drichards",
+    url="https://github.com/r33drichards/sqlaya",
+    license="MIT License",
     version=VERSION,
-    packages=["sqlite_rot13"],
-    package_data={"sqlite_rot13": ['*.so', '*.dylib', '*.dll']},
+    packages=["sqlite_laya"],
+    package_data={"sqlite_laya": ['*.so', '*.dylib', '*.dll']},
     install_requires=[],
     # Adding an Extension makes `pip wheel` believe that this isn't a 
     # pure-python package. The noop.c was added since the windows build

@@ -1,88 +1,115 @@
-# SQLite Custom Extension Template
+# sqlaya
 
-This repository contains a template for building custom [SQLite] extensions in C / C++. It supports the following targets:
+[Laya](https://huggingface.co/convaiinnovations/laya) typed decisions as SQL functions,
+for SQLite and PostgreSQL. Both extensions embed [laya.cpp](https://github.com/r33drichards/laya.cpp),
+the native C++ inference runtime, so a table of text can be classified, scored or filtered
+without leaving the database.
 
-- Loadable module
-- Static library
-- WebAssembly build with fiddle
-- Python package
+```sql
+-- SQLite
+.load ./dist/debug/laya
+select id from tickets where laya_noul(body, 'Does the customer request a refund?') > 0.5;
 
-Credits goes to [Alex Garcia](https://github.com/asg017/sqlite-ecosystem) for his numerous repositories which I adapted to create this scaffold. Check out his repositories for other build targets. I added a WASM target based on the official SQLite build (more info at my [blog post](https://www.timlrx.com/blog/sqlite-wasm-with-custom-extensions)). The WASM build requires compiling from the raw source tree, instead of relying on the amalgamation distribution.
-
-The scaffold creates 2 functions (`rot13()` and `rot13_version()`), and a virtual table module with no implementation logic (`rot13`) as an SQLite extension.
-
-The WASM build copies the contents in `src/` and the pre-processed header files to `sqlite/ext/wasm` and builds it over there. `sqlite_wasm_extra_init.c` is required to initialize the extension and `fiddle.make` overrides the default file and adds the extension to the fiddle.
-
-If you encounter any issues, it might help to run `git clean -df` in the sqlite submodule before re-running the build process.
-
-## Pre-requisites
-
-In addition to platform specific build tools (e.g. llvm or build-essentials), the following tools are required:
-
-- [CMake](https://cmake.org/)
-- [Python](https://www.python.org/) with `pip install wheel`
-- [Emscripten](https://github.com/emscripten-core/emsdk.git)
-- [WASM Binary Toolkit](https://github.com/WebAssembly/wabt)
-
-## Getting Started
-
-Run the following command:
-
-1. Clone the repository: `git clone --recurse-submodules https://github.com/username/rot13.git`
-2. Build the loadable module: `make loadable`
-3. Build the static library: `make static`
-4. Build the Python package: `make python`
-5. Build the WebAssembly module and fiddle: `make wasm`
-6. Add your own files to the `src/` directory and update the code in the folders accordingly.
-
-## Repository Structure
-
-```
-.
-├── src/                          # Source code for the SQLite extension
-│   ├── rot13.c
-│   ├── rot13.h.in
-|   |── fiddle.make               # Overrides the default make file to add the extension to the fiddle
-│   └── sqlite_wasm_extra_init.c  # Required for WASM build
-├── tests/                        # Contains the test suite for the SQLite extension
-│   ├── test_loadable.sql         # Contains the SQL test cases for the loadable module
-│   └── test_rot13.py             # Contains the Python test cases for the rot13 virtual table module
-├── build/                        # Intermediate build files
-├── build_release/                # Intermediate build files when making the release targets
-├── vendor/
-│   └── sqlite/                   # Git submodule for the SQLite library
-├── dist/
-│   ├── debug/                    # Debug build artifacts
-│   └── release/                  # Release build artifacts
-├── scripts/
-|   └── rename_wheels.py
-├── bindings/                     # Bindings for other builds
-│   └── python/
-├── CMakeLists.txt
-├── Makefile
-└── README.md
+-- PostgreSQL
+CREATE EXTENSION laya;
+SET laya.model_dir = '/srv/models/laya';
+SELECT id FROM tickets WHERE laya_noul(body, 'Does the customer request a refund?') > 0.5;
 ```
 
-Running `make python` will generate an installable wheels in `dist/debug/wheels`.
+Both modules provide `laya_load`, `laya_backend`, `laya_version`, `laya_noul`,
+`laya_choice`, `laya_score` and `laya()`, which returns the full answers object as JSON.
 
-The output of `make wasm` is located at `dist/debug/wasm` and includes a fiddle with the extension built-in. Test it out by running `python -m http.server` and browsing the directory content.
+## Layout
 
-## Makefile
+| Directory | Contents |
+|---|---|
+| [`engine/`](engine/) | Shared C++ engine: one resident checkpoint per process, serialized calls, lazy loading. `laya_engine.hpp` plus the `sqlaya-engine` CMake target that builds laya.cpp and ggml as static position-independent archives. |
+| [`laya.cpp/`](laya.cpp/) | Git submodule with the native runtime, tokenizers and the `laya-cli` tool. |
+| [`sqlite/`](sqlite/README.md) | SQLite loadable module, static library, Python wheel and tests. |
+| [`postgres/`](postgres/README.md) | PostgreSQL extension built from the [pg_extension](https://github.com/mkindahl/pg_extension) CMake template, with pg_regress tests. |
 
-The Makefile in this repository contains the following targets:
+The top-level `CMakeLists.txt` builds everything into one tree, so ggml and the laya
+runtime compile once. Each module directory also configures on its own.
 
-- `loadable`: builds a loadable version of the extension. The module will be located in `dist/debug`, with file extensions `.dylib`, `.so`, or `.dll` depending on your operating system
-- `loadable-release`: release version of the loadable module located in `dist/release`
-- `static`: builds the static version of the extension. `.a` and `.h` files are located in `dist/debug` and can be used to statically link with other projects.
-- `static-release`: release version of the static library located in `dist/release`
-- `wasm`: builds the WebAssembly module including SQLite fiddle. Built files and demos are copied to `dist/debug/wasm`.
-- `wasm-release`: builds the WebAssembly module for release. Built files are copied to `dist/release/wasm`.
-- `python`: builds the Python wheels in debug mode. Built files are located at `dist/debug/wheels`.
-- `python-release`: builds the Python wheels for release. Built files are located at `dist/release/wheels`.
-- `python-versions`: updates the version file for the Python package
-- `test-loadable`: test the Python loadable module
-- `test-python`: test the Python package (requires installation)
-- `test`: runs both the loadable module test and the Python package test
-- `clean`: removes all dist files
+## Build
 
-[SQLite]: https://sqlite.org/index.html
+Requirements: a C++20 compiler, CMake 3.24+, ICU and nlohmann-json; the SQLite extension
+headers for `sqlite/`; PostgreSQL server development files for `postgres/`; optionally
+the CUDA toolkit. On Debian-like systems:
+
+```sh
+sudo apt-get install cmake ninja-build libicu-dev nlohmann-json3-dev libsqlite3-dev \
+  postgresql-16 postgresql-server-dev-16
+git clone --recurse-submodules https://github.com/r33drichards/sqlaya.git
+cd sqlaya
+make loadable static        # SQLite: dist/debug/laya.so, libsqlite_laya.a, sqlaya.h
+make postgres               # PostgreSQL: build/postgres/laya.so and laya.control
+sudo make postgres-install  # into the directories reported by pg_config
+```
+
+The CUDA backend is enabled automatically when CMake finds a CUDA compiler. Force a
+choice with `CMAKE_FLAGS='-DSQLAYA_CUDA=OFF' make loadable` or `-DSQLAYA_CUDA=ON`,
+adding `-DCMAKE_CUDA_ARCHITECTURES=<arch>` for your GPU as described in the laya.cpp README.
+The PostgreSQL module is configured automatically when `pg_config` and the server headers
+are found; `-DSQLAYA_POSTGRES=OFF` skips it.
+
+## Models
+
+Download a pinned checkpoint into `models/laya` (requires `pip install huggingface_hub`):
+
+```sh
+make model                            # english
+make model MODEL_VARIANT=multilingual # models/laya/multilingual
+make model MODEL_VARIANT=typed-decisions
+```
+
+The `english` checkpoint lives at the model-store root; the other variants live in a
+subdirectory named after the variant, matching the laya.cpp layout.
+
+## Load options
+
+`laya_load(dir, options)` and the lazy-loading settings take a JSON object:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `variant` | `english` | `english`, `multilingual` or `typed-decisions`; appended to `dir` when not `english`. |
+| `cuda` | true when built with CUDA | Use the CUDA backend. |
+| `metal` | true on Apple builds without CUDA | Use the Apple Metal backend. Faster, but see the accuracy note below. |
+| `tensor_core` | false | Compensated Tensor Core FP32 projections (CUDA). |
+| `flash` | false | Fused FP32 attention (CUDA). |
+| `bf16` | false | Native mixed BF16 (CUDA; implies `flash`). |
+
+When no model is resident, the first inference call loads one from `LAYA_MODEL_DIR` and
+`LAYA_OPTIONS` in the environment (PostgreSQL consults its `laya.model_dir` and
+`laya.options` settings first). If nothing is found the call fails with
+`No Laya model loaded; call laya_load(dir) or set LAYA_MODEL_DIR`.
+
+## Tests
+
+```sh
+make test-loadable                                     # SQLite, no checkpoint needed
+LAYA_MODEL_DIR=models/laya make cli test-loadable      # SQLite with checkpoint and CLI parity
+LAYA_MODEL_DIR=models/laya LAYA_OPTIONS='{"cuda": false}' make postgres
+sudo make postgres-install && make test-postgres       # pg_regress, not as root
+```
+
+## Limitations
+
+- Scalar functions run one forward pass per row. Use `laya()` to evaluate several
+  questions about the same row in one batch. Cross-row batching is not available.
+- Strict FP32 on the CPU is slow for a 28-layer encoder: about a second per question on a
+  few cores. Use the CUDA build for table-scale workloads.
+- **Metal trades exactness for speed, and is on by default on Apple hardware.** ggml's
+  Metal backend ignores the FP32 accumulation the runtime requests, so public numbers
+  drift beyond the 0.0001 tolerance the project holds ports to: measured at up to 0.0011
+  on an M3, against this build's own CPU FP32 path. Selected categories were unaffected.
+  Pass `json_object('metal', 0)` for numbers that satisfy the documented tolerance, at
+  roughly five times the latency. See [Metal](laya.cpp/docs/precision.md#apple-metal).
+- When built with CUDA, load the model before other CUDA users in the same process; the
+  runtime disables TF32 before initializing cuBLAS.
+- SQLite keeps one model per process; PostgreSQL backends each load their own copy. See
+  the module READMEs.
+
+## License
+
+MIT, see [LICENSE](LICENSE). laya.cpp, ggml and the Laya checkpoints retain their own licenses.
