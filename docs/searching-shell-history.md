@@ -180,7 +180,7 @@ select
   )) as answer
 from history
 where deleted_at is null
-  and timestamp >= (unixepoch('now','-1 year') * 1000000000)
+  and timestamp >= (unixepoch('now','-30 days')  * 1000000000)
 group by command;
 
 -- laya() returns JSON, so pull the fields out with json_extract
