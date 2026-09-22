@@ -26,6 +26,7 @@ namespace sqlaya {
   struct load_options {
     std::string variant = "english";
     bool cuda = SQLAYA_CUDA_DEFAULT != 0;
+    bool metal = SQLAYA_METAL_DEFAULT != 0;
     bool bf16 = false, flash = false, tensor_core = false;
   };
 
@@ -43,6 +44,7 @@ namespace sqlaya {
         continue;
       }
       bool *flag = key == "cuda"          ? &options.cuda
+                   : key == "metal"       ? &options.metal
                    : key == "bf16"        ? &options.bf16
                    : key == "flash"       ? &options.flash
                    : key == "tensor_core" ? &options.tensor_core
@@ -83,7 +85,7 @@ namespace sqlaya {
         throw std::invalid_argument("Not a checkpoint directory: " + path.string());
       std::lock_guard<std::mutex> lock(mutex);
       auto fresh = std::make_unique<laya::agent>(path, options.cuda, options.bf16, options.flash,
-                                                 options.tensor_core);
+                                                 options.tensor_core, options.metal);
       backend = fresh->backend_name();
       agent = std::move(fresh);
       return backend;
@@ -128,7 +130,7 @@ namespace sqlaya {
       const auto path = checkpoint_path(model, options);
       if (!std::filesystem::is_directory(path)) throw std::runtime_error(NOT_LOADED);
       auto fresh = std::make_unique<laya::agent>(path, options.cuda, options.bf16, options.flash,
-                                                 options.tensor_core);
+                                                 options.tensor_core, options.metal);
       backend = fresh->backend_name();
       agent = std::move(fresh);
     }

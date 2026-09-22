@@ -21,6 +21,14 @@ else()
 endif()
 option(SQLAYA_CUDA "Build the NVIDIA CUDA inference backend" ${SQLAYA_CUDA_DEFAULT})
 set(LAYA_CUDA ${SQLAYA_CUDA} CACHE BOOL "" FORCE)
+# Metal is the GPU backend on Apple platforms, where CUDA never applies.
+if(APPLE AND NOT SQLAYA_CUDA)
+  set(SQLAYA_METAL_DEFAULT ON)
+else()
+  set(SQLAYA_METAL_DEFAULT OFF)
+endif()
+option(SQLAYA_METAL "Build the Apple Metal inference backend" ${SQLAYA_METAL_DEFAULT})
+set(LAYA_METAL ${SQLAYA_METAL} CACHE BOOL "" FORCE)
 add_subdirectory(vendor/laya.cpp EXCLUDE_FROM_ALL)
 
 # Only the extension headers are required; the host application provides SQLite itself.
@@ -36,7 +44,7 @@ if(NOT SQLITE3EXT_INCLUDE_DIR)
 endif()
 
 set(SQLAYA_SOURCES src/sqlaya.cpp)
-set(SQLAYA_DEFINITIONS SQLAYA_CUDA_DEFAULT=$<BOOL:${SQLAYA_CUDA}>)
+set(SQLAYA_DEFINITIONS SQLAYA_CUDA_DEFAULT=$<BOOL:${SQLAYA_CUDA}> SQLAYA_METAL_DEFAULT=$<BOOL:${SQLAYA_METAL}>)
 
 # Loadable module: laya.so / laya.dylib, entry point sqlite3_laya_init.
 add_library(sqlaya SHARED ${SQLAYA_SOURCES})

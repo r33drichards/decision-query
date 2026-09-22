@@ -84,6 +84,7 @@ subdirectory named after the variant, matching the laya.cpp layout.
 |---|---|---|
 | `variant` | `english` | `english`, `multilingual` or `typed-decisions`; appended to `dir` when not `english`. |
 | `cuda` | true when built with CUDA | Use the CUDA backend. |
+| `metal` | true on Apple builds without CUDA | Use the Apple Metal backend. Faster, but see the accuracy note below. |
 | `tensor_core` | false | Compensated Tensor Core FP32 projections (CUDA). |
 | `flash` | false | Fused FP32 attention (CUDA). |
 | `bf16` | false | Native mixed BF16 (CUDA; implies `flash`). |
@@ -153,6 +154,12 @@ scans, and compares every public number against `laya-cli` output within 0.0001.
   questions about the same row in one batch. Cross-row batching is not available.
 - Strict FP32 on the CPU is slow for a 28-layer encoder: about a second per question on a
   few cores. Use the CUDA build for table-scale workloads.
+- **Metal trades exactness for speed, and is on by default on Apple hardware.** ggml's
+  Metal backend ignores the FP32 accumulation the runtime requests, so public numbers
+  drift beyond the 0.0001 tolerance the project holds ports to: measured at up to 0.0011
+  on an M3, against this build's own CPU FP32 path. Selected categories were unaffected.
+  Pass `json_object('metal', 0)` for numbers that satisfy the documented tolerance, at
+  roughly five times the latency. See [Metal](vendor/laya.cpp/docs/precision.md#apple-metal).
 - When built with CUDA, load the model before other CUDA users in the same process; the
   runtime disables TF32 before initializing cuBLAS.
 - The WebAssembly and Windows targets of the original extension template are not supported.

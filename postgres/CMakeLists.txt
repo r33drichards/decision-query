@@ -22,6 +22,14 @@ else()
 endif()
 option(SQLAYA_CUDA "Build the NVIDIA CUDA inference backend" ${SQLAYA_CUDA_DEFAULT})
 set(LAYA_CUDA ${SQLAYA_CUDA} CACHE BOOL "" FORCE)
+# Metal is the GPU backend on Apple platforms, where CUDA never applies.
+if(APPLE AND NOT SQLAYA_CUDA)
+  set(SQLAYA_METAL_DEFAULT ON)
+else()
+  set(SQLAYA_METAL_DEFAULT OFF)
+endif()
+option(SQLAYA_METAL "Build the Apple Metal inference backend" ${SQLAYA_METAL_DEFAULT})
+set(LAYA_METAL ${SQLAYA_METAL} CACHE BOOL "" FORCE)
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../vendor/laya.cpp" laya.cpp EXCLUDE_FROM_ALL)
 
 enable_testing()
@@ -53,7 +61,8 @@ target_compile_features(pglaya PRIVATE cxx_std_20)
 target_compile_options(pglaya PRIVATE -Wall $<$<COMPILE_LANGUAGE:CXX>:-Wextra>)
 target_compile_definitions(pglaya PRIVATE
   PGLAYA_VERSION="v${SQLAYA_VERSION_TEXT}"
-  SQLAYA_CUDA_DEFAULT=$<BOOL:${SQLAYA_CUDA}>)
+  SQLAYA_CUDA_DEFAULT=$<BOOL:${SQLAYA_CUDA}>
+  SQLAYA_METAL_DEFAULT=$<BOOL:${SQLAYA_METAL}>)
 target_include_directories(pglaya PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../src")
 target_link_libraries(pglaya PRIVATE laya)
 # PostgreSQL looks up the entry points in laya.c; keep everything else private.
