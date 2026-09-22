@@ -1,6 +1,7 @@
 .vscode
 /build
 /build_release
+/build_postgres
 /dist
 /models
 *.db

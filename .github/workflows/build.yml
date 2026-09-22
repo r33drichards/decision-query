@@ -31,3 +31,20 @@ jobs:
             dist/debug/libsqlite_laya.a
             dist/debug/sqlaya.h
             dist/debug/wheels/*.whl
+  postgres-linux-x86_64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libicu-dev nlohmann-json3-dev postgresql-16 postgresql-server-dev-16
+      - run: make postgres
+      - run: sudo make postgres-install
+      - run: make test-postgres
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pglaya-linux-x86_64
+          path: |
+            build_postgres/laya.so
+            build_postgres/laya.control
+            postgres/laya--*.sql

@@ -42,6 +42,10 @@ INTERMEDIATE_PYPACKAGE_EXTENSION=bindings/python/sqlite_laya/
 TARGET_WHEELS=$(PREFIX)/debug/wheels
 TARGET_WHEELS_RELEASE=$(PREFIX)/release/wheels
 
+# PostgreSQL extension (postgres/)
+PG_BUILD=build_postgres
+PG_CMAKE_FLAGS=$(CMAKE_FLAGS) $(if $(LAYA_MODEL_DIR),-DLAYA_MODEL_DIR=$(abspath $(LAYA_MODEL_DIR))) $(if $(LAYA_OPTIONS),'-DLAYA_OPTIONS=$(LAYA_OPTIONS)')
+
 # Model store
 MODEL_DIR=models/laya
 MODEL_VARIANT?=english
@@ -113,6 +117,17 @@ model:
 	mv vendor/laya.cpp/models/laya $(MODEL_DIR)
 	echo "✅ downloaded $(MODEL_VARIANT) checkpoint to $(MODEL_DIR)"
 
+postgres:
+	cmake -S postgres -B $(PG_BUILD) $(PG_CMAKE_FLAGS) && cmake --build $(PG_BUILD) --parallel
+
+# Installs into the PostgreSQL directories reported by pg_config (may need sudo).
+postgres-install: postgres
+	cmake --install $(PG_BUILD)
+
+# Runs pg_regress on a temporary instance; the extension must be installed.
+test-postgres:
+	ctest --test-dir $(PG_BUILD) --output-on-failure
+
 test-loadable:
 	$(PYTHON) tests/test-loadable.py
 
@@ -126,4 +141,4 @@ test:
 .PHONY: clean test \
 	loadable loadable-release static static-release cli \
 	python python-release python-versions model \
-	test-loadable test-python
+	postgres postgres-install test-postgres test-loadable test-python

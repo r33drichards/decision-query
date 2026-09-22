@@ -1,0 +1,16 @@
+_Pg_magic_func
+__PG_init
+_pg_finfo_laya_version
+_pg_finfo_laya_backend
+_pg_finfo_laya_load
+_pg_finfo_laya_noul
+_pg_finfo_laya_score
+_pg_finfo_laya_choice
+_pg_finfo_laya_answers
+_laya_version
+_laya_backend
+_laya_load
+_laya_noul
+_laya_score
+_laya_choice
+_laya_answers

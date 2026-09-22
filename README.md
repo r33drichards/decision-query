@@ -25,6 +25,14 @@ select id, json_extract(laya(body, '{"urgency": {"type": "score",
 One checkpoint stays resident per process, on the GPU when built with CUDA or on the CPU
 otherwise. Every SQLite connection in the process shares it.
 
+A PostgreSQL extension with the same functions lives in [postgres/](postgres/README.md):
+
+```sql
+CREATE EXTENSION laya;
+SET laya.model_dir = '/srv/models/laya';
+SELECT id FROM tickets WHERE laya_noul(body, 'Does the customer request a refund?') > 0.5;
+```
+
 ## Build
 
 Requirements: a C++20 compiler, CMake 3.24+, ICU, nlohmann-json, and the SQLite extension
@@ -106,6 +114,18 @@ The first inference call without a resident model loads one from the environment
 `LAYA_OPTIONS` (the same JSON as the `laya_load` options). If that directory does not exist
 the call fails with `No Laya model loaded; call laya_load(dir) or set LAYA_MODEL_DIR`.
 
+## PostgreSQL
+
+```sh
+sudo apt-get install postgresql-16 postgresql-server-dev-16
+make postgres               # build_postgres/laya.so
+sudo make postgres-install  # into the directories reported by pg_config
+make test-postgres          # pg_regress on a temporary instance (not as root)
+```
+
+See [postgres/README.md](postgres/README.md) for the SQL reference, the `laya.model_dir`
+and `laya.options` settings, and the per-backend memory model.
+
 ## Python
 
 `make python` builds a wheel for the `sqlite_laya` package in `dist/debug/wheels`. See
@@ -136,6 +156,7 @@ scans, and compares every public number against `laya-cli` output within 0.0001.
 - When built with CUDA, load the model before other CUDA users in the same process; the
   runtime disables TF32 before initializing cuBLAS.
 - The WebAssembly and Windows targets of the original extension template are not supported.
+- PostgreSQL backends each load their own copy of the model; see [postgres/README.md](postgres/README.md).
 
 ## License
 
