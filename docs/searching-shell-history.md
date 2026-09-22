@@ -207,18 +207,69 @@ order by p desc
 limit 20;
 ```
 
-Results look like this (secrets redacted):
+Results from actual run 
 
 ```
-┌───────┬───────────┬────┬────────────────────────────────────────┐
-│   p   │ provider  │ n  │                command                 │
-├───────┼───────────┼────┼────────────────────────────────────────┤
-│ 1.0   │ anthropic │ 8  │ export ANTHROPIC_API_KEY=sk-a…         │
-│ 1.0   │ openai    │ 8  │ export OPENAI_API_KEY=sk-p…            │
-│ 1.0   │ aws       │ 1  │ curl -o x.tar "https://…X-Amz-Sig…     │
-│ 1.0   │ other     │ 56 │ curl … -H "X-API-Key: d5c7…"           │
-└───────┴───────────┴────┴────────────────────────────────────────┘
+limit 20;sqlite> sqlite>    ...>    ...>    ...>    ...>    ...>    ...> 
+┌───────┬──────────┬────┬──────────────────────────────────────────────────────────────┐
+│   p   │ provider │ n  │                           command                            │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.931 │ openai   │ 1  │ ! First copy your one-time code: A83E-55D1                   │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.768 │ openai   │ 1  │ CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --dangerously- │
+│       │          │    │ skip-permissions                                             │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.721 │ openai   │ 33 │ CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --dangerously- │
+│       │          │    │ skip-permissions                                             │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.719 │ aws      │ 1  │ ssh root@100.100.41.14                                       │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.703 │ openai   │ 1  │ $PY atari_live.py --game MsPacman --model $CK/atari-dag2f-rl │
+│       │          │    │ cd                                                           │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.702 │ openai   │ 5  │ clear                                                        │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.625 │ openai   │ 20 │ cd                                                           │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.611 │ openai   │ 1  │ $PY atari_live.py --game Galaxian  --model $CK/atari-dag2f-r │
+│       │          │    │ lcd                                                          │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.609 │ github   │ 1  │ gh auth refresh -s workflow && gh auth token | pbcopy        │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.579 │ openai   │ 1  │ ls                                                           │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.568 │ openai   │ 1  │ $PY atari_live.py --game Freeway  --model $CK/atari-dag2f-rl │
+│       │          │    │ cd                                                           │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.562 │ openai   │ 20 │ CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --dangerously- │
+│       │          │    │ skip-permissions --worktree                                  │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.55  │ openai   │ 1  │ $PY atari_live.py --game frogger  --model ~/laya-vision-smol │
+│       │          │    │ vlm/checkpoints/atari-8g-1f                                  │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.493 │ openai   │ 1  │ ../venv/bin/python examples/atari_live.py --game Freeway --m │
+│       │          │    │ odel thaitea/laya-vision-smolvlm-256m                        │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.479 │ openai   │ 1  │ $PY atari_live.py --game Frogger  --model ~/laya-vision-smol │
+│       │          │    │ vlm/checkpoints/atari-8g-1f                                  │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.47  │ other    │ 1  │ pwd                                                          │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.452 │ openai   │ 1  │ test                                                         │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.413 │ openai   │ 1  │ $PY atari_live.py --game Qbert  --model ~/laya-vision-smolvl │
+│       │          │    │ m/checkpoints/atari-8g-1f                                    │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.402 │ openai   │ 3  │ PI_EXPERIMENTAL=1 PI_SERVER_DIR=/tmp/pisrv ~/pi/pi-test.sh c │
+│       │          │    │ lient                                                        │
+├───────┼──────────┼────┼──────────────────────────────────────────────────────────────┤
+│ 0.396 │ openai   │ 1  │ $PY atari_live.py --game Galaxian  --model ~/laya-vision-smo │
+│       │          │    │ lvlm/checkpoints/atari-8g-1f                                 │
+└───────┴──────────┴────┴──────────────────────────────────────────────────────────────┘
+sqlite> 
 ```
+
+so secrets detection is not great in baseline laya, and neither was categorization. 
 
 `laya()` also returns per-category probabilities, so you can see how confident the
 choice was rather than just taking the label:
