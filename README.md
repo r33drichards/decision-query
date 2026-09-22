@@ -84,6 +84,13 @@ When no model is resident, the first inference call loads one from `LAYA_MODEL_D
 `laya.options` settings first). If nothing is found the call fails with
 `No Laya model loaded; call laya_load(dir) or set LAYA_MODEL_DIR`.
 
+## Tutorial
+
+[Searching shell history in plain English](docs/searching-shell-history.md) walks
+through cloning, building, loading the extension against an
+[atuin](https://atuin.sh) database, and asking questions like *"does this command
+contain an API key, and whose is it?"*
+
 ## Tests
 
 ```sh
