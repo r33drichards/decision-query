@@ -193,6 +193,20 @@ where json_extract(answer,'$.secret.noul') >= 0.95
 order by p desc, n desc;
 ```
 
+view the results 
+
+```
+.mode box
+.headers on
+select round(json_extract(answer,'$.secret.noul'),3) as p,
+       json_extract(answer,'$.provider.choice')      as provider,
+       n,
+       command
+from judged
+order by p desc
+limit 20;
+```
+
 Results look like this (secrets redacted):
 
 ```
