@@ -16,7 +16,8 @@ and sorting them by which vendor issued them.
 - macOS on Apple silicon, or Linux with an NVIDIA GPU (a CPU-only build works
   everywhere, about five times slower)
 - A C++20 compiler, CMake 3.24+, ICU, nlohmann-json
-- Python with `huggingface_hub`, to fetch the model once
+- Python with `huggingface_hub`, to fetch the model once (the nix line below
+  supplies it)
 - ~1 GB of disk for the checkpoint
 
 The commands below use [nix](https://nixos.org) to supply the build dependencies,
@@ -41,11 +42,23 @@ relying on the Metal numbers.
 
 ## 2. Fetch the model
 
+`make model` calls `python3` and needs `huggingface_hub`, so bring a Python that
+has it rather than installing into your system interpreter:
+
 ```bash
-HF_HUB_DISABLE_XET=1 make model
+nix-shell -p 'python3.withPackages(ps: [ps.huggingface-hub])' \
+          --run 'HF_HUB_DISABLE_XET=1 make model'
 ```
 
-This downloads a pinned Laya checkpoint (~840 MB) into `models/laya`.
+Without that you get `ModuleNotFoundError: No module named 'huggingface_hub'`.
+If you would rather not use nix, any interpreter works — the Makefile takes one:
+
+```bash
+python3 -m venv /tmp/hf && /tmp/hf/bin/pip install huggingface_hub
+HF_HUB_DISABLE_XET=1 make model python=/tmp/hf/bin/python
+```
+
+Either way this downloads a pinned Laya checkpoint (~840 MB) into `models/laya`.
 
 `HF_HUB_DISABLE_XET=1` is worth keeping. Without it the `hf_xet` transfer backend
 can abort partway through `model.safetensors`, leave a `.incomplete` file, and
