@@ -1,88 +1,142 @@
-# SQLite Custom Extension Template
+# sqlaya
 
-This repository contains a template for building custom [SQLite] extensions in C / C++. It supports the following targets:
+A SQLite extension that answers [Laya](https://huggingface.co/convaiinnovations/laya) typed
+decisions from SQL. It embeds [laya.cpp](https://github.com/r33drichards/laya.cpp), the
+native C++ inference runtime, so a table of text can be classified, scored or filtered
+without leaving the database:
 
-- Loadable module
-- Static library
-- WebAssembly build with fiddle
-- Python package
+```sql
+.load ./dist/debug/laya
+select laya_load('models/laya');
 
-Credits goes to [Alex Garcia](https://github.com/asg017/sqlite-ecosystem) for his numerous repositories which I adapted to create this scaffold. Check out his repositories for other build targets. I added a WASM target based on the official SQLite build (more info at my [blog post](https://www.timlrx.com/blog/sqlite-wasm-with-custom-extensions)). The WASM build requires compiling from the raw source tree, instead of relying on the amalgamation distribution.
+select id, subject from tickets
+ where laya_noul(body, 'Does the customer request a refund?') > 0.5;
 
-The scaffold creates 2 functions (`rot13()` and `rot13_version()`), and a virtual table module with no implementation logic (`rot13`) as an SQLite extension.
+select id, laya_choice(body, 'Which department should handle this?',
+                       json_array('billing', 'technical', 'sales')) as department
+  from tickets;
 
-The WASM build copies the contents in `src/` and the pre-processed header files to `sqlite/ext/wasm` and builds it over there. `sqlite_wasm_extra_init.c` is required to initialize the extension and `fiddle.make` overrides the default file and adds the extension to the fiddle.
-
-If you encounter any issues, it might help to run `git clean -df` in the sqlite submodule before re-running the build process.
-
-## Pre-requisites
-
-In addition to platform specific build tools (e.g. llvm or build-essentials), the following tools are required:
-
-- [CMake](https://cmake.org/)
-- [Python](https://www.python.org/) with `pip install wheel`
-- [Emscripten](https://github.com/emscripten-core/emsdk.git)
-- [WASM Binary Toolkit](https://github.com/WebAssembly/wabt)
-
-## Getting Started
-
-Run the following command:
-
-1. Clone the repository: `git clone --recurse-submodules https://github.com/username/rot13.git`
-2. Build the loadable module: `make loadable`
-3. Build the static library: `make static`
-4. Build the Python package: `make python`
-5. Build the WebAssembly module and fiddle: `make wasm`
-6. Add your own files to the `src/` directory and update the code in the folders accordingly.
-
-## Repository Structure
-
-```
-.
-├── src/                          # Source code for the SQLite extension
-│   ├── rot13.c
-│   ├── rot13.h.in
-|   |── fiddle.make               # Overrides the default make file to add the extension to the fiddle
-│   └── sqlite_wasm_extra_init.c  # Required for WASM build
-├── tests/                        # Contains the test suite for the SQLite extension
-│   ├── test_loadable.sql         # Contains the SQL test cases for the loadable module
-│   └── test_rot13.py             # Contains the Python test cases for the rot13 virtual table module
-├── build/                        # Intermediate build files
-├── build_release/                # Intermediate build files when making the release targets
-├── vendor/
-│   └── sqlite/                   # Git submodule for the SQLite library
-├── dist/
-│   ├── debug/                    # Debug build artifacts
-│   └── release/                  # Release build artifacts
-├── scripts/
-|   └── rename_wheels.py
-├── bindings/                     # Bindings for other builds
-│   └── python/
-├── CMakeLists.txt
-├── Makefile
-└── README.md
+select id, json_extract(laya(body, '{"urgency": {"type": "score",
+        "instructions": "How urgent is the request?",
+        "criteria": ["not urgent", "soon", "immediate"]}}'), '$.urgency.score') as urgency
+  from tickets;
 ```
 
-Running `make python` will generate an installable wheels in `dist/debug/wheels`.
+One checkpoint stays resident per process, on the GPU when built with CUDA or on the CPU
+otherwise. Every SQLite connection in the process shares it.
 
-The output of `make wasm` is located at `dist/debug/wasm` and includes a fiddle with the extension built-in. Test it out by running `python -m http.server` and browsing the directory content.
+## Build
 
-## Makefile
+Requirements: a C++20 compiler, CMake 3.24+, ICU, nlohmann-json, and the SQLite extension
+headers. Optional: the CUDA toolkit for GPU inference. On Debian-like systems:
 
-The Makefile in this repository contains the following targets:
+```sh
+sudo apt-get install cmake ninja-build libicu-dev nlohmann-json3-dev libsqlite3-dev
+git clone --recurse-submodules https://github.com/r33drichards/sqlaya.git
+cd sqlaya
+make loadable          # dist/debug/laya.so (or laya.dylib)
+make static            # dist/debug/libsqlite_laya.a and sqlaya.h
+make loadable-release  # optimized build in dist/release
+```
 
-- `loadable`: builds a loadable version of the extension. The module will be located in `dist/debug`, with file extensions `.dylib`, `.so`, or `.dll` depending on your operating system
-- `loadable-release`: release version of the loadable module located in `dist/release`
-- `static`: builds the static version of the extension. `.a` and `.h` files are located in `dist/debug` and can be used to statically link with other projects.
-- `static-release`: release version of the static library located in `dist/release`
-- `wasm`: builds the WebAssembly module including SQLite fiddle. Built files and demos are copied to `dist/debug/wasm`.
-- `wasm-release`: builds the WebAssembly module for release. Built files are copied to `dist/release/wasm`.
-- `python`: builds the Python wheels in debug mode. Built files are located at `dist/debug/wheels`.
-- `python-release`: builds the Python wheels for release. Built files are located at `dist/release/wheels`.
-- `python-versions`: updates the version file for the Python package
-- `test-loadable`: test the Python loadable module
-- `test-python`: test the Python package (requires installation)
-- `test`: runs both the loadable module test and the Python package test
-- `clean`: removes all dist files
+The CUDA backend is enabled automatically when CMake finds a CUDA compiler. Force a
+choice with `CMAKE_FLAGS='-DSQLAYA_CUDA=OFF' make loadable` or `-DSQLAYA_CUDA=ON`,
+adding `-DCMAKE_CUDA_ARCHITECTURES=<arch>` for your GPU as described in the laya.cpp README.
+The module links ICU (and the CUDA runtime, when enabled) dynamically; ggml and the laya
+runtime are folded into the module and only `sqlite3_laya_init` is exported.
 
-[SQLite]: https://sqlite.org/index.html
+## Models
+
+Download a pinned checkpoint into `models/laya` (requires `pip install huggingface_hub`):
+
+```sh
+make model                            # english
+make model MODEL_VARIANT=multilingual # models/laya/multilingual
+make model MODEL_VARIANT=typed-decisions
+```
+
+The `english` checkpoint lives at the model-store root; the other variants live in a
+subdirectory named after the variant, matching the laya.cpp layout.
+
+## SQL reference
+
+| Function | Returns | Description |
+|---|---|---|
+| `laya_version()` | TEXT | Extension version, e.g. `v0.0.1`. |
+| `laya_load(dir)`, `laya_load(dir, options)` | TEXT | Loads a checkpoint and returns the backend name (`CPU`, `CUDA0`). Replaces the resident model only after the new one loads. |
+| `laya_backend()` | TEXT or NULL | Backend of the resident model, NULL when none is loaded. |
+| `laya_noul(state, instructions)`, `laya_noul(state, instructions, criteria)` | REAL | Probability that the statement holds. Optional criteria: `{"true": "...", "false": "..."}` descriptions. |
+| `laya_choice(state, instructions, criteria)` | TEXT | The selected option. Criteria: a JSON array of names or a JSON object mapping names to descriptions. |
+| `laya_score(state, instructions, criteria)` | REAL | Expected ordinal score. Criteria: a JSON array of level descriptions, scored 0 through n-1. |
+| `laya(state, questions)` | TEXT (JSON) | The full answers object for a questions object, evaluated in one batch. |
+
+`options` for `laya_load` is a JSON object:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `variant` | `english` | `english`, `multilingual` or `typed-decisions`; appended to `dir` when not `english`. |
+| `cuda` | true when built with CUDA | Use the CUDA backend. |
+| `tensor_core` | false | Compensated Tensor Core FP32 projections (CUDA). |
+| `flash` | false | Fused FP32 attention (CUDA). |
+| `bf16` | false | Native mixed BF16 (CUDA; implies `flash`). |
+
+```sql
+select laya_load('models/laya', json_object('variant', 'multilingual', 'tensor_core', 1, 'flash', 1));
+```
+
+`questions` for `laya()` uses the laya.cpp request schema: an object of question ids, each
+with `type` (`choice`, `score` or `noul`), `instructions`, and `criteria`. The result is the
+`answers` object from laya.cpp, including `confidence`, `probabilities` and `action`
+metadata, and carries SQLite's JSON subtype so `json_extract` and `json_object` nest it
+directly.
+
+Argument rules:
+
+- A NULL `state`, `instructions` or `criteria` yields NULL without running the model.
+- `state` and `instructions` are passed as text. A value produced by SQLite's JSON
+  functions (`json()`, `json_object()`, ...) is passed as structured JSON instead, so a row
+  can be summarized as `laya_noul(json_object('subject', subject, 'body', body), ...)`.
+- Invalid JSON, unknown question types and other request errors raise a SQL error carrying
+  the laya.cpp message.
+
+### Model resolution
+
+The first inference call without a resident model loads one from the environment:
+`LAYA_MODEL_DIR` (default `models/laya`, relative to the working directory) and
+`LAYA_OPTIONS` (the same JSON as the `laya_load` options). If that directory does not exist
+the call fails with `No Laya model loaded; call laya_load(dir) or set LAYA_MODEL_DIR`.
+
+## Python
+
+`make python` builds a wheel for the `sqlite_laya` package in `dist/debug/wheels`. See
+[bindings/python/README.md](bindings/python/README.md); the wheel depends on the system ICU
+libraries of the machine that built it.
+
+## Tests
+
+```sh
+make test-loadable                           # model-independent tests
+make model && make cli                       # checkpoint and laya-cli for parity checks
+LAYA_MODEL_DIR=models/laya make test-loadable
+```
+
+With a checkpoint, the suite loads it, checks the smoke cases from laya.cpp, runs table
+scans, and compares every public number against `laya-cli` output within 0.0001. Pass
+`LAYA_OPTIONS='{"cuda": true, "tensor_core": true, "flash": true}'` and
+`LAYA_CLI_FLAGS='--tensor-core-fp32 --flash-fp32'` to exercise the GPU path.
+
+## Limitations
+
+- One resident model per process; `laya_load` replaces it. Calls are serialized across
+  connections and threads, as the laya runtime requires.
+- Scalar functions run one forward pass per row. Use `laya()` to evaluate several
+  questions about the same row in one batch. Cross-row batching is not available.
+- Strict FP32 on the CPU is slow for a 28-layer encoder: about a second per question on a
+  few cores. Use the CUDA build for table-scale workloads.
+- When built with CUDA, load the model before other CUDA users in the same process; the
+  runtime disables TF32 before initializing cuBLAS.
+- The WebAssembly and Windows targets of the original extension template are not supported.
+
+## License
+
+MIT, see [LICENSE](LICENSE). laya.cpp, ggml and the Laya checkpoints retain their own licenses.

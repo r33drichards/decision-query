@@ -1,0 +1,18 @@
+#ifndef SQLITE_LAYA_H
+#define SQLITE_LAYA_H
+
+#include "sqlite3ext.h"
+
+#define SQLITE_LAYA_VERSION "@SQLITE_LAYA_VERSION@"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int sqlite3_laya_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* SQLITE_LAYA_H */

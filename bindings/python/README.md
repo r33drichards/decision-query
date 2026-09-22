@@ -1,66 +1,37 @@
-# The `sqlite-rot` Python package
+# The `sqlite-laya` Python package
 
-`sqlite-rot13` is also distributed on PyPi as a Python package, for use in Python applications. It works well with the builtin [`sqlite3`](https://docs.python.org/3/library/sqlite3.html) Python module.
+`sqlite-laya` packages the `laya` SQLite extension for Python applications using the
+builtin [`sqlite3`](https://docs.python.org/3/library/sqlite3.html) module.
 
 ```
-pip install sqlite-rot
+pip install sqlite-laya
 ```
 
 ## Usage
 
-The `sqlite-rot13` python package exports two functions: `loadable_path()`, which returns the full path to the loadable extension, and `load(conn)`, which loads the `sqlite-rot13` extension into the given [sqlite3 Connection object](https://docs.python.org/3/library/sqlite3.html#connection-objects).
+The package exports two functions: `loadable_path()`, which returns the full path to the
+loadable extension (without the platform suffix, which SQLite infers), and `load(conn)`,
+which loads the extension into a [sqlite3 Connection](https://docs.python.org/3/library/sqlite3.html#connection-objects).
 
 ```python
-import sqlite_rot13
-print(sqlite_rot13.loadable_path())
-# '/.../venv/lib/python3.9/site-packages/sqlite_rot13/rot13'
-
 import sqlite3
+import sqlite_laya
+
 conn = sqlite3.connect(':memory:')
 conn.enable_load_extension(True)
-sqlite_rot13.load(conn)
+sqlite_laya.load(conn)
+conn.enable_load_extension(False)
 
-print(conn.execute('select rot13_version()').fetchone()[0])
-# 'v0.1.0'
+conn.execute("select laya_load('models/laya')")
+print(conn.execute("select laya_noul('Please refund the duplicate charge.', 'Does the customer ask for a refund?')").fetchone()[0])
 ```
 
-See [the full API Reference](#api-reference) for the Python API, and [`docs.md`](../../docs.md) for documentation on the `sqlite-rot` SQL API.
+See the repository README for the SQL API and model setup.
 
 ## Compatibility
 
-Currently the `sqlite-rot13` Python package is only distributed on PyPi as pre-build wheels, it's not possible to install from the source distribution. This is because the underlying `sqlite-rot13` extension requires a lot of build dependencies like `make`, `cc`, and `cargo`.
-
-If you get a `unsupported platform` error when pip installing `sqlite-rot13`, you'll have to build the `sqlite-rot13` manually and load in the dynamic library manually.
-
-## API Reference
-
-<h3 name="loadable_path"><code>loadable_path()</code></h3>
-
-Returns the full path to the locally-install `sqlite-rot13` extension, without the filename.
-
-This can be directly passed to [`sqlite3.Connection.load_extension()`](https://docs.python.org/3/library/sqlite3.html#sqlite3.Connection.load_extension), but the [`sqlite_rot.load()`](#load) function is preferred.
-
-```python
-import sqlite_rot13
-print(sqlite_rot13.loadable_path())
-# '/.../venv/lib/python3.9/site-packages/sqlite_rot13/rot13'
-```
-
-> Note: this extension path doesn't include the file extension (`.dylib`, `.so`, `.dll`). This is because [SQLite will infer the correct extension](https://www.sqlite.org/loadext.html#loading_an_extension).
-
-<h3 name="load"><code>load(connection)</code></h3>
-
-Loads the `sqlite-rot13` extension on the given [`sqlite3.Connection`](https://docs.python.org/3/library/sqlite3.html#sqlite3.Connection) object, calling [`Connection.load_extension()`](https://docs.python.org/3/library/sqlite3.html#sqlite3.Connection.load_extension).
-
-```python
-import sqlite_rot13
-import sqlite3
-conn = sqlite3.connect(':memory:')
-
-conn.enable_load_extension(True)
-sqlite_rot.load(conn)
-conn.enable_load_extension(False)
-
-conn.execute('select rot13_version(), rot13()').fetchone()
-# ('v0.1.0', '01gr7gwc5aq22ycea6j8kxq4s9')
-```
+The wheel bundles the loadable module built on the packaging machine. The module links
+the system ICU libraries dynamically and, when built with CUDA, the CUDA runtime, so a
+wheel is only usable on a compatible system. It is not repaired with `auditwheel`. If the
+package does not load on your platform, build the extension from source and load the
+resulting module directly with `Connection.load_extension()`.

@@ -2,14 +2,13 @@
 /build
 /build_release
 /dist
+/models
 *.db
 *.so
 *.dylib
 *.dll
-*.xml
-*.zip
-*.index
-vendor/sqlite
+*.whl
+__pycache__/
 
 CMakeLists.txt.user
 CMakeCache.txt
