@@ -45,6 +45,6 @@ jobs:
         with:
           name: pglaya-linux-x86_64
           path: |
-            build_postgres/laya.so
-            build_postgres/laya.control
+            build/postgres/laya.so
+            build/postgres/laya.control
             postgres/laya--*.sql

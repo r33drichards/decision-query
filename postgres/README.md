@@ -2,7 +2,7 @@
 
 The `laya` PostgreSQL extension exposes the same Laya typed decisions as the SQLite
 module in this repository, built from the [pg_extension](https://github.com/mkindahl/pg_extension)
-CMake template and the shared `src/laya_engine.hpp` runtime wrapper.
+CMake template and the shared engine in `engine/laya_engine.hpp`.
 
 ```sql
 CREATE EXTENSION laya;
@@ -32,7 +32,7 @@ optional CUDA). On Debian-like systems:
 ```sh
 sudo apt-get install cmake ninja-build libicu-dev nlohmann-json3-dev \
   postgresql-16 postgresql-server-dev-16
-make postgres               # build_postgres/laya.so and laya.control
+make postgres               # build/postgres/laya.so and laya.control
 sudo make postgres-install  # copies into the directories reported by pg_config
 ```
 
@@ -89,7 +89,7 @@ make test-postgres
 
 The model test keeps numeric results inside assertions so its expected output is the
 same on every backend. Update expected files after intentional changes with
-`cmake --build build_postgres --target laya_update_results`.
+`cmake --build build --target laya_update_results`.
 
 ## Limitations
 

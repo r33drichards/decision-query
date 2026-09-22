@@ -10,7 +10,7 @@ MODEL_DIR = os.environ.get("LAYA_MODEL_DIR")
 LAYA_OPTIONS = os.environ.get("LAYA_OPTIONS", "{}")
 CLI_PATH = os.environ.get("LAYA_CLI", "./build/bin/laya-cli")
 CLI_FLAGS = os.environ.get("LAYA_CLI_FLAGS", "--cpu").split()
-SMOKE_CASES = "./vendor/laya.cpp/benchmarks/cases/smoke.json"
+SMOKE_CASES = "./laya.cpp/benchmarks/cases/smoke.json"
 TOLERANCE = 1e-4  # laya.cpp's own acceptance tolerance for public numbers.
 
 
