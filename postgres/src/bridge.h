@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-typedef struct pglaya_request {
+typedef struct pgdq_request {
   /* Checkpoint directory and JSON options used when no model is resident.
    * Either may be NULL or empty; the environment is consulted next. */
   const char *model_dir;
@@ -24,27 +24,27 @@ typedef struct pglaya_request {
   const char *criteria; /* JSON text or NULL. */
   const char
       *questions; /* JSON text of a questions object when type is NULL. */
-} pglaya_request;
+} pgdq_request;
 
-typedef struct pglaya_response {
+typedef struct pgdq_response {
   double number; /* noul probability or expected score */
   char *text;    /* choice name or answers JSON */
   char *error;   /* message when the call fails */
-} pglaya_response;
+} pgdq_response;
 
 /* Returns 0 on success; response strings are malloc'd and freed with
- * pglaya_free. */
-int pglaya_evaluate(const pglaya_request *request, pglaya_response *response);
+ * pgdq_free. */
+int pgdq_evaluate(const pgdq_request *request, pgdq_response *response);
 
 /* Loads a checkpoint; options_json may be NULL. Returns 0 and the backend name
  * on success, otherwise a nonzero value and an error message. */
-int pglaya_load(const char *directory, const char *options_json, char **backend,
+int pgdq_load(const char *directory, const char *options_json, char **backend,
                 char **error);
 
 /* Backend name of the resident model, or NULL when none is loaded. */
-char *pglaya_backend(void);
+char *pgdq_backend(void);
 
-void pglaya_free(char *pointer);
+void pgdq_free(char *pointer);
 
 #ifdef __cplusplus
 }

@@ -8,7 +8,7 @@
 #include <string>
 #include <utility>
 
-#include "laya_engine.hpp"
+#include "decision_engine.hpp"
 
 namespace {
 using json = laya::json;
@@ -40,17 +40,17 @@ int guarded(char **error, Body &&body) {
   } catch (const std::exception &e) {
     *error = copy(e.what());
   } catch (...) {
-    *error = copy("Unknown Laya error");
+    *error = copy("Unknown error");
   }
   return 1;
 }
 }  // namespace
 
-extern "C" int pglaya_evaluate(const pglaya_request *request,
-                               pglaya_response *response) {
-  *response = pglaya_response{};
+extern "C" int pgdq_evaluate(const pgdq_request *request,
+                               pgdq_response *response) {
+  *response = pgdq_response{};
   return guarded(&response->error, [&] {
-    auto &engine = sqlaya::engine::instance();
+    auto &engine = dq::engine::instance();
     const std::string model_dir = request->model_dir ? request->model_dir : "";
     const std::string options = request->options ? request->options : "";
     const json state =
@@ -59,7 +59,7 @@ extern "C" int pglaya_evaluate(const pglaya_request *request,
       const json questions = parse(request->questions, "laya questions");
       if (!questions.is_object() || questions.empty())
         throw std::invalid_argument(
-            "laya questions must be a nonempty JSON object");
+            "questions must be a nonempty JSON object");
       response->text =
           copy(engine.answers(state, questions, model_dir, options).dump());
       return;
@@ -83,29 +83,29 @@ extern "C" int pglaya_evaluate(const pglaya_request *request,
   });
 }
 
-extern "C" int pglaya_load(const char *directory, const char *options_json,
+extern "C" int pgdq_load(const char *directory, const char *options_json,
                            char **backend, char **error) {
   *backend = nullptr;
   *error = nullptr;
   return guarded(error, [&] {
     if (!directory)
-      throw std::invalid_argument("laya_load requires a checkpoint directory");
+      throw std::invalid_argument("dq_load requires a checkpoint directory");
     json options;
     if (options_json && *options_json)
-      options = parse(options_json, "laya_load options");
-    *backend = copy(sqlaya::engine::instance().load(directory, options));
+      options = parse(options_json, "dq_load options");
+    *backend = copy(dq::engine::instance().load(directory, options));
   });
 }
 
-extern "C" char *pglaya_backend(void) {
+extern "C" char *pgdq_backend(void) {
   char *result = nullptr;
   guarded(&result, [&] {
-    const auto backend = sqlaya::engine::instance().backend_name();
+    const auto backend = dq::engine::instance().backend_name();
     result = backend.empty() ? nullptr : copy(backend);
   });
   return result;
 }
 
-extern "C" void pglaya_free(char *pointer) {
+extern "C" void pgdq_free(char *pointer) {
   std::free(pointer);
 }

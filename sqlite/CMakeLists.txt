@@ -1,14 +1,14 @@
-# SQLite loadable module (laya.so) and static library (libsqlite_laya.a).
+# SQLite loadable module (laya.so) and static library (libdecision_query.a).
 cmake_minimum_required(VERSION 3.24)
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-  project(sqlaya-sqlite LANGUAGES C CXX)
+  project(decision-query-sqlite LANGUAGES C CXX)
 endif()
-if(NOT TARGET sqlaya-engine)
+if(NOT TARGET decision-query-engine)
   add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../engine" engine)
 endif()
 
-set(SQLITE_LAYA_VERSION "v${SQLAYA_VERSION_TEXT}")
-configure_file(src/sqlaya.h.in sqlaya.h)
+set(SQLITE_DQ_VERSION "v${DQ_VERSION_TEXT}")
+configure_file(src/decision_query.h.in decision_query.h)
 
 # Only the extension headers are required; the host application provides SQLite itself.
 find_path(SQLITE3EXT_INCLUDE_DIR sqlite3ext.h)
@@ -22,21 +22,23 @@ if(NOT SQLITE3EXT_INCLUDE_DIR)
   set(SQLITE3EXT_INCLUDE_DIR "${sqlite_amalgamation_SOURCE_DIR}")
 endif()
 
-# Loadable module: laya.so / laya.dylib, entry point sqlite3_laya_init.
-add_library(sqlaya SHARED src/sqlaya.cpp)
-set_target_properties(sqlaya PROPERTIES PREFIX "" OUTPUT_NAME "laya" CXX_VISIBILITY_PRESET hidden)
-target_compile_options(sqlaya PRIVATE -Wall -Wextra -Wpedantic)
-target_include_directories(sqlaya PRIVATE "${CMAKE_CURRENT_BINARY_DIR}" "${SQLITE3EXT_INCLUDE_DIR}")
-target_link_libraries(sqlaya PRIVATE sqlaya-engine)
+# SQLite strips non-alphanumeric characters from the base name when it derives
+# the entry point, so decision_query.dylib resolves sqlite3_decisionquery_init.
+# Loadable module: decision_query.so / decision_query.dylib, entry point sqlite3_decisionquery_init.
+add_library(decision-query SHARED src/decision_query.cpp)
+set_target_properties(decision-query PROPERTIES PREFIX "" OUTPUT_NAME "decision_query" CXX_VISIBILITY_PRESET hidden)
+target_compile_options(decision-query PRIVATE -Wall -Wextra -Wpedantic)
+target_include_directories(decision-query PRIVATE "${CMAKE_CURRENT_BINARY_DIR}" "${SQLITE3EXT_INCLUDE_DIR}")
+target_link_libraries(decision-query PRIVATE decision-query-engine)
 if(APPLE)
-  target_link_options(sqlaya PRIVATE "-Wl,-exported_symbol,_sqlite3_laya_init")
+  target_link_options(decision-query PRIVATE "-Wl,-exported_symbol,_sqlite3_decisionquery_init")
 elseif(UNIX)
   # Keep ggml and laya symbols private to the module.
-  target_link_options(sqlaya PRIVATE "-Wl,--exclude-libs,ALL")
+  target_link_options(decision-query PRIVATE "-Wl,--exclude-libs,ALL")
 endif()
 
-# Static library for embedding; consumers also link the sqlaya-engine target.
-add_library(sqlaya-static STATIC src/sqlaya.cpp)
-set_target_properties(sqlaya-static PROPERTIES OUTPUT_NAME "sqlite_laya")
-target_include_directories(sqlaya-static PUBLIC "${CMAKE_CURRENT_BINARY_DIR}" "${SQLITE3EXT_INCLUDE_DIR}")
-target_link_libraries(sqlaya-static PUBLIC sqlaya-engine)
+# Static library for embedding; consumers also link the decision-query-engine target.
+add_library(decision-query-static STATIC src/decision_query.cpp)
+set_target_properties(decision-query-static PROPERTIES OUTPUT_NAME "decision_query")
+target_include_directories(decision-query-static PUBLIC "${CMAKE_CURRENT_BINARY_DIR}" "${SQLITE3EXT_INCLUDE_DIR}")
+target_link_libraries(decision-query-static PUBLIC decision-query-engine)

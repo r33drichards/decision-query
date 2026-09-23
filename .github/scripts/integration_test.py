@@ -25,7 +25,7 @@ def sql(extension, backend, options, statements):
     """Runs statements through the sqlite3 CLI with the extension loaded."""
     script = f".load {extension}\n.mode list\n.headers off\n"
     opt = f", '{options}'" if options else ""
-    script += f"select laya_load('{backend}'{opt});\n" + statements
+    script += f"select dq_load('{backend}'{opt});\n" + statements
     out = subprocess.run(["sqlite3", ":memory:"], input=script, text=True,
                          capture_output=True, timeout=600)
     if out.returncode != 0:
@@ -36,13 +36,13 @@ def sql(extension, backend, options, statements):
 
 
 def noul(cmd, instructions, criteria=None):
-    """One laya_noul call. Criteria are optional; omit rather than pass null."""
+    """One noul call. Criteria are optional; omit rather than pass null."""
     cmd = cmd.replace("'", "''")
     ins = instructions.replace("'", "''")
     if criteria is None:
-        return f"select laya_noul('{cmd}', '{ins}');"
+        return f"select noul('{cmd}', '{ins}');"
     crit = json.dumps(criteria).replace("'", "''")
-    return f"select laya_noul('{cmd}', '{ins}', json('{crit}'));"
+    return f"select noul('{cmd}', '{ins}', json('{crit}'));"
 
 
 def check(name, ok, detail=""):
@@ -71,7 +71,7 @@ def main():
         # Options must be an object of option -> description. A bare JSON array
         # works against a local checkpoint but is rejected by the System One HTTP
         # shape, so the object form is the portable one.
-        "select laya_choice('git push origin main', 'Which tool does this command use?', "
+        "select choice('git push origin main', 'Which tool does this command use?', "
         "json('{\"git\":\"the git version control tool\",\"docker\":\"the docker "
         "container tool\",\"kubernetes\":\"the kubernetes orchestrator\",\"other\":"
         "\"something else\"}'));",
@@ -114,7 +114,7 @@ def main():
 
     # --- a bad backend must fail loudly, not silently succeed ---------------
     bad = subprocess.run(["sqlite3", ":memory:"], text=True, capture_output=True,
-                         input=f".load {a.extension}\nselect laya_load('/nonexistent/x');\n")
+                         input=f".load {a.extension}\nselect dq_load('/nonexistent/x');\n")
     check("invalid backend raises an error", bad.returncode != 0 or "rror" in bad.stderr,
           f"rc={bad.returncode}")
 

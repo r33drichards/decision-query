@@ -3,7 +3,7 @@
 # The job always runs so its check context always reports; a PR without the
 # integration-test label fails at the gate with an actionable message rather
 # than hanging forever as an unreported required check.
-name: integration-laya
+name: integration-local
 on:
   pull_request:
     branches: [main]
@@ -12,11 +12,11 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: integration-laya-${{ github.event.pull_request.number || github.ref }}
+  group: integration-local-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
-  laya-local:
-    name: laya-local
+  local-backend:
+    name: local-backend
     runs-on: ubuntu-latest
     steps:
       - name: Require the integration-test label
@@ -44,6 +44,6 @@ jobs:
       - name: Decision checks against the local checkpoint
         run: |
           python3 .github/scripts/integration_test.py \
-            --extension dist/debug/laya \
+            --extension dist/debug/decision_query \
             --backend models/laya \
             --profile laya

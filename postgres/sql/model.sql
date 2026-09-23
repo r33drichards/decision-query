@@ -1,11 +1,11 @@
--- Model-backed checks; configured through laya.model_dir and laya.options in
+-- Model-backed checks; configured through decision_query.model_dir and decision_query.options in
 -- the temporary instance. Numeric results stay inside assertions so the
 -- expected output does not depend on the backend.
 
-SELECT laya_backend() IS NULL AS unloaded_before_first_call;
-SELECT laya_noul('Please refund the duplicate charge.', 'Does the customer ask for a refund?') > 0.5 AS refund;
-SELECT laya_backend() IS NOT NULL AS loaded_lazily;
-SELECT laya_load(current_setting('laya.model_dir'), current_setting('laya.options')::jsonb) = laya_backend() AS reloaded;
+SELECT dq_backend() IS NULL AS unloaded_before_first_call;
+SELECT noul('Please refund the duplicate charge.', 'Does the customer ask for a refund?') > 0.5 AS refund;
+SELECT dq_backend() IS NOT NULL AS loaded_lazily;
+SELECT dq_load(current_setting('decision_query.model_dir'), current_setting('decision_query.options')::jsonb) = dq_backend() AS reloaded;
 
 DO $$
 DECLARE
@@ -13,15 +13,15 @@ DECLARE
   departments constant jsonb := '{"billing": "payments and refunds", "technical": "bugs and outages", "sales": "new contracts"}';
   answers jsonb;
 BEGIN
-  ASSERT laya_noul('The service works well. Thank you!', 'Is this a complaint?') < 0.5;
-  ASSERT laya_noul(body, 'Does the customer request a refund?',
+  ASSERT noul('The service works well. Thank you!', 'Is this a complaint?') < 0.5;
+  ASSERT noul(body, 'Does the customer request a refund?',
                    '{"true": "a refund is requested", "false": "no refund is requested"}') > 0.5;
-  ASSERT laya_choice(body, 'Which department should handle this?', departments) = 'billing';
-  ASSERT laya_choice(body, 'Which department should handle this?', '["billing", "technical", "sales"]') = 'billing';
-  ASSERT laya_choice(jsonb_build_object('subject', 'Duplicate invoice', 'body', body),
+  ASSERT choice(body, 'Which department should handle this?', departments) = 'billing';
+  ASSERT choice(body, 'Which department should handle this?', '["billing", "technical", "sales"]') = 'billing';
+  ASSERT choice(jsonb_build_object('subject', 'Duplicate invoice', 'body', body),
                      'Which department should handle this?', departments) = 'billing';
-  ASSERT laya_score(body, 'How urgent is the request?', '["not urgent", "soon", "immediate"]') BETWEEN 0 AND 2;
-  answers := laya(jsonb_build_object('subject', 'Duplicate invoice', 'body', body), jsonb_build_object(
+  ASSERT score(body, 'How urgent is the request?', '["not urgent", "soon", "immediate"]') BETWEEN 0 AND 2;
+  answers := decide(jsonb_build_object('subject', 'Duplicate invoice', 'body', body), jsonb_build_object(
     'department', jsonb_build_object('type', 'choice', 'instructions', 'Which department should handle this?', 'criteria', departments),
     'urgency', jsonb_build_object('type', 'score', 'instructions', 'How urgent is the request?', 'criteria', '["not urgent", "soon", "immediate"]'::jsonb),
     'refund', jsonb_build_object('type', 'noul', 'instructions', 'Does the customer request a refund?')));
@@ -37,9 +37,9 @@ INSERT INTO tickets(body) VALUES
   ('I was charged twice. Please refund the extra charge today.'),
   ('The service works well. Thank you!'),
   ('The login page returns a 500 error since this morning.');
-SELECT id FROM tickets WHERE laya_noul(body, 'Does the customer request a refund?') > 0.5 ORDER BY id;
-SELECT id, laya_choice(body, 'Which department should handle this?', '["billing", "technical", "sales"]') AS department
+SELECT id FROM tickets WHERE noul(body, 'Does the customer request a refund?') > 0.5 ORDER BY id;
+SELECT id, choice(body, 'Which department should handle this?', '["billing", "technical", "sales"]') AS department
   FROM tickets WHERE id IN (1, 3) ORDER BY id;
-SELECT id, laya(body, '{"refund": {"type": "noul", "instructions": "Does the customer request a refund?"}}') -> 'refund' ? 'noul' AS answered
+SELECT id, decide(body, '{"refund": {"type": "noul", "instructions": "Does the customer request a refund?"}}') -> 'refund' ? 'noul' AS answered
   FROM tickets ORDER BY id;
 DROP TABLE tickets;

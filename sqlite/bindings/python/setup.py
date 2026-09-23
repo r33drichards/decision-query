@@ -3,7 +3,7 @@ import os
 import platform
 
 version = {}
-with open("sqlite_laya/version.py") as fp:
+with open("decision_query/version.py") as fp:
     exec(fp.read(), version)
 
 VERSION = version['__version__']
@@ -26,16 +26,16 @@ else:
   raise Exception("unsupported platform")
 
 setup(
-    name="sqlite-laya",
+    name="decision-query",
     description="SQLite extension for querying data with Laya typed decisions",
     long_description="SQLite extension for querying data with Laya typed decisions",
     long_description_content_type="text/markdown",
     author="r33drichards",
-    url="https://github.com/r33drichards/sqlaya",
+    url="https://github.com/r33drichards/decision-query",
     license="MIT License",
     version=VERSION,
-    packages=["sqlite_laya"],
-    package_data={"sqlite_laya": ['*.so', '*.dylib', '*.dll']},
+    packages=["decision_query"],
+    package_data={"decision_query": ['*.so', '*.dylib', '*.dll']},
     install_requires=[],
     # Adding an Extension makes `pip wheel` believe that this isn't a 
     # pure-python package. The noop.c was added since the windows build

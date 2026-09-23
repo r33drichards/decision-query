@@ -2,7 +2,7 @@
 
 Your shell history is a few tens of thousands of lines of text you can only grep.
 `grep kubectl` finds `kubectl`; it does not find `helm`, `k9s` or `kubectx` unless
-you already thought of them. This tutorial points sqlaya at an
+you already thought of them. This tutorial points decision-query at an
 [atuin](https://atuin.sh) history database so you can ask questions instead:
 *"is this command Kubernetes-related?"*, *"does this line contain an API key?"*
 
@@ -26,13 +26,13 @@ drop the `nix-shell -p … --run` wrapper and run the inner command directly.
 ## 1. Clone and build
 
 ```bash
-git clone https://github.com/r33drichards/sqlaya.git
-cd sqlaya
+git clone https://github.com/r33drichards/decision-query.git
+cd decision-query
 git submodule update --init --recursive   # laya.cpp, ggml
 nix-shell -p cmake icu nlohmann_json sqlite ninja --run 'make loadable-release'
 ```
 
-That produces `dist/release/laya.dylib` (`.so` on Linux). The first build takes a
+That produces `dist/release/decision_query.dylib` (`.so` on Linux). The first build takes a
 few minutes because it compiles ggml from source.
 
 The GPU backend is selected automatically: Metal on Apple silicon, CUDA when a
@@ -91,11 +91,11 @@ extension loading compiled out, so `.load` fails there outright.
 At the `sqlite>` prompt:
 
 ```sql
-.load ./dist/release/laya
-select laya_load('./models/laya');
+.load ./dist/release/decision_query
+select dq_load('./models/laya');
 ```
 
-`laya_load` returns the backend it selected: `MTL0` for Metal, `CUDA0` for CUDA,
+`dq_load` returns the backend it selected: `MTL0` for Metal, `CUDA0` for CUDA,
 `CPU` otherwise. One model stays resident per process.
 
 Dot-commands must start at column 0. Indenting `.load` inside a script produces a
@@ -111,10 +111,10 @@ Turn on readable output while you are exploring:
 ## 5. Check it works
 
 ```sql
-select laya_noul('kubectl get pods', 'Is this command related to Kubernetes?');
+select noul('kubectl get pods', 'Is this command related to Kubernetes?');
 ```
 
-`laya_noul` returns the probability that the statement holds, 0.0 to 1.0. Expect
+`noul` returns the probability that the statement holds, 0.0 to 1.0. Expect
 something close to `1.0`, in about 0.1 s on a GPU backend. If that works, the
 extension, the model and the database are all wired up.
 
@@ -125,7 +125,7 @@ Now the real thing. This scans the last 30 days:
 ```sql
 select
   -- P(this command contains a credential), one model pass per row
-  round(laya_noul(command,
+  round(noul(command,
     'Does this command contain an API key, token, password, or secret credential?'), 3) as p,
 
   count(*) as n,                     -- how often you ran this exact command
@@ -157,7 +157,7 @@ where scoring every row would take an hour.
 ## 7. Two questions in one pass
 
 Knowing a line holds a secret is more useful when you also know *whose* secret it
-is. `laya()` evaluates several questions about the same row in a single forward
+is. `decide()` evaluates several questions about the same row in a single forward
 pass — so asking "is this a credential?" **and** "which vendor issued it?" costs
 the same as asking either one alone.
 
@@ -271,7 +271,7 @@ sqlite>
 
 so secrets detection is not great in baseline laya, and neither was categorization. 
 
-`laya()` also returns per-category probabilities, so you can see how confident the
+`decide()` also returns per-category probabilities, so you can see how confident the
 choice was rather than just taking the label:
 
 ```sql
@@ -302,7 +302,7 @@ tolerance the project holds ports to. Selected categories are unaffected. For
 filtering and ranking this is irrelevant; when the digits matter, use:
 
 ```sql
-select laya_load('./models/laya', json_object('metal', 0));
+select dq_load('./models/laya', json_object('metal', 0));
 ```
 
 **Read rankings, not absolute scores.** On a small or homogeneous window the
@@ -337,9 +337,9 @@ commands in full, secrets included.
 
 ## Where to go next
 
-- `laya_score(text, question, json_array(...))` — an ordinal score, e.g. how
+- `score(text, question, json_array(...))` — an ordinal score, e.g. how
   destructive a command is
-- `laya_choice(text, question, json_array(...))` — a category on its own
+- `choice(text, question, json_array(...))` — a category on its own
 - `laya(text, questions)` — several questions in one pass, as above
 - [Load options](../README.md#load-options) — backend selection and model variants
 - [Precision](../laya.cpp/docs/precision.md) — the accuracy contract and where
