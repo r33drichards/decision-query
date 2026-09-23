@@ -130,14 +130,24 @@ is cluster-wide and cannot be scoped to a role.
 A remote backend sends the text you are asking about to that service. Local
 checkpoints send nothing anywhere.
 
-Give `choice` its options as an object of option to description. A bare
-JSON array works against a local checkpoint but is rejected by the System One
-HTTP shape, so the object form is the portable one:
+The two multi-option functions take **different shapes**, which is easy to get
+wrong: `choice` takes an object of option to description, and `score` takes an
+array of level descriptions, lowest first. A bare array passed to `choice` works
+against a local checkpoint but is rejected by the System One HTTP shape, so the
+object form is the portable one:
 
 ```sql
 select choice('git push origin main', 'Which tool does this command use?',
                    json_object('git', 'the git version control tool',
                                'docker', 'the docker container tool'));
+```
+
+`score` places a row on an ordered rubric and returns a number in the range of
+the levels you gave it:
+
+```sql
+select score('rm -rf /', 'How destructive is this?',
+             json_array('harmless', 'local damage', 'irreversible'));
 ```
 
 ## Tutorial
