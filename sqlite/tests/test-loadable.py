@@ -108,7 +108,7 @@ class TestCases(unittest.TestCase):
   def test_decide(self):
     self.assertIsNone(scalar("select decide(NULL, '{}')"))
     self.assertIsNone(scalar("select decide('state', NULL)"))
-    with self.assertRaisesRegex(sqlite3.OperationalError, "laya questions must be valid JSON"):
+    with self.assertRaisesRegex(sqlite3.OperationalError, "^questions must be valid JSON"):
       scalar("select decide('state', 'nope')")
     with self.assertRaisesRegex(sqlite3.OperationalError, "nonempty JSON object"):
       scalar("select decide('state', '{}')")
