@@ -125,6 +125,16 @@ is cluster-wide and cannot be scoped to a role.
 A remote backend sends the text you are asking about to that service. Local
 checkpoints send nothing anywhere.
 
+Give `laya_choice` its options as an object of option to description. A bare
+JSON array works against a local checkpoint but is rejected by the System One
+HTTP shape, so the object form is the portable one:
+
+```sql
+select laya_choice('git push origin main', 'Which tool does this command use?',
+                   json_object('git', 'the git version control tool',
+                               'docker', 'the docker container tool'));
+```
+
 ## Tutorial
 
 [Searching shell history in plain English](docs/searching-shell-history.md) walks
