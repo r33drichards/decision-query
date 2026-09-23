@@ -1,9 +1,14 @@
 # Integration test against a remote System One endpoint over HTTPS.
 #
-# Sends the commands under test to that service, so it runs only on a labelled
-# PR from a branch in this repository. Pull requests from forks are not given
-# repository secrets by GitHub, which is deliberate: the job says so plainly
-# instead of failing with an opaque authentication error.
+# Sends the commands under test to that service, so it needs a repository
+# secret. GitHub does not expose secrets to a pull request from a fork, and
+# working around that with pull_request_target would run untrusted code with
+# this repository's credentials. So on a fork this job reports success without
+# testing anything, and says so in the log.
+#
+# The consequence is deliberate and worth stating plainly: a pull request from
+# a fork can merge without the remote backend ever having been exercised.
+# integration-laya still runs in full on forks, since it needs no secret.
 name: integration-jev
 on:
   pull_request:
@@ -19,24 +24,34 @@ jobs:
     name: jev-remote
     runs-on: ubuntu-latest
     steps:
+      # First, so a fork is never blocked by the label gate on a job that
+      # cannot run for it anyway.
+      - name: Check whether this PR can reach the secret
+        id: gate
+        run: |
+          if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+            echo "::notice::Pull request is from a fork, which GitHub does not give repository secrets. The remote backend was NOT tested. A maintainer should re-run this from a branch in this repository before trusting it."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Require the integration-test label
-        if: ${{ !contains(github.event.pull_request.labels.*.name, 'integration-test') }}
+        if: ${{ steps.gate.outputs.skip != 'true' && !contains(github.event.pull_request.labels.*.name, 'integration-test') }}
         run: |
           echo "::error::Integration tests have not run. Add the 'integration-test' label to this PR."
           exit 1
-      - name: Require a repository secret
-        if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
-        run: |
-          echo "::error::This PR is from a fork, so GitHub does not expose TYPESAFE_API_KEY to it. A maintainer must re-run these tests from a branch in this repository."
-          exit 1
       - uses: actions/checkout@v4
+        if: ${{ steps.gate.outputs.skip != 'true' }}
         with:
           submodules: recursive
       # libssl-dev is required here: without OpenSSL the build supports only
       # http:// endpoints and this test uses https://.
-      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libicu-dev nlohmann-json3-dev libsqlite3-dev libssl-dev sqlite3
-      - run: make loadable
+      - if: ${{ steps.gate.outputs.skip != 'true' }}
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libicu-dev nlohmann-json3-dev libsqlite3-dev libssl-dev sqlite3
+      - if: ${{ steps.gate.outputs.skip != 'true' }}
+        run: make loadable
       - name: Decision checks against the remote endpoint
+        if: ${{ steps.gate.outputs.skip != 'true' }}
         env:
           LAYA_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
         run: |
