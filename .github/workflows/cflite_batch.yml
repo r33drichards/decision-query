@@ -19,7 +19,7 @@ jobs:
       # build_fuzzers reads .clusterfuzzlite/project.yaml from the workspace to
       # pick the Ubuntu 24.04 images; without a checkout it falls back to 20.04,
       # whose glibc cannot run the fuzzers built on 24.04.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build Fuzzers (${{ matrix.sanitizer }})
         id: build
         uses: google/clusterfuzzlite/actions/build_fuzzers@v1
