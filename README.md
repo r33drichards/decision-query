@@ -75,6 +75,8 @@ subdirectory named after the variant, matching the laya.cpp layout.
 | `variant` | `english` | `english`, `multilingual` or `typed-decisions`; appended to `dir` when not `english`. |
 | `cuda` | true when built with CUDA | Use the CUDA backend. |
 | `metal` | true on Apple builds without CUDA | Use the Apple Metal backend. Faster, but see the accuracy note below. |
+| `key` | `$LAYA_API_KEY` | Bearer token for an HTTP endpoint. Prefer the environment variable; a key written into SQL lands in your shell history. |
+| `model` | `jev-latest` | Model name sent to an HTTP endpoint. |
 | `tensor_core` | false | Compensated Tensor Core FP32 projections (CUDA). |
 | `flash` | false | Fused FP32 attention (CUDA). |
 | `bf16` | false | Native mixed BF16 (CUDA; implies `flash`). |
@@ -83,6 +85,55 @@ When no model is resident, the first inference call loads one from `LAYA_MODEL_D
 `LAYA_OPTIONS` in the environment (PostgreSQL consults its `laya.model_dir` and
 `laya.options` settings first). If nothing is found the call fails with
 `No Laya model loaded; call laya_load(dir) or set LAYA_MODEL_DIR`.
+
+## Decision backends
+
+`laya_load` takes a checkpoint directory or the URL of a service speaking the
+System One request shape. The SQL functions are identical either way.
+
+```sql
+select laya_load('./models/laya');                             -- local, in-process
+select laya_load('https://api.typesafe.ai/v1/systemone');      -- TypeSafe Jev
+select laya_load('http://localhost:8000/v1/systemone',
+                 json_object('model', 'reflex-4b'));           -- a local server
+```
+
+Credentials resolve in this order: the `key` option, then `key_file`, then
+`$LAYA_API_KEY_FILE`, then `$LAYA_API_KEY`.
+
+Prefer a file. A key written into a SQL statement is a key in your shell history,
+and on PostgreSQL it also reaches `pg_stat_activity` and the statement log.
+
+```sql
+select laya_load('https://api.typesafe.ai/v1/systemone',
+                 json_object('key_file', '/etc/sqlaya/api-key'));
+```
+
+On PostgreSQL, set the superuser-only `laya.api_key_file` GUC instead:
+
+```
+laya.api_key_file = '/etc/sqlaya/api-key'   # postgresql.conf
+```
+
+It names a path rather than holding the secret, so the value never appears in
+`pg_settings`, `SHOW ALL` or a config dump. `$LAYA_API_KEY` works there too but
+is cluster-wide and cannot be scoped to a role.
+
+`https://` requires OpenSSL at build time. CMake reports which you have:
+`sqlaya: HTTPS decision endpoints enabled`, or a note that only `http://` will work.
+
+A remote backend sends the text you are asking about to that service. Local
+checkpoints send nothing anywhere.
+
+Give `laya_choice` its options as an object of option to description. A bare
+JSON array works against a local checkpoint but is rejected by the System One
+HTTP shape, so the object form is the portable one:
+
+```sql
+select laya_choice('git push origin main', 'Which tool does this command use?',
+                   json_object('git', 'the git version control tool',
+                               'docker', 'the docker container tool'));
+```
 
 ## Tutorial
 

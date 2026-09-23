@@ -1,0 +1,50 @@
+# Integration test against a remote System One endpoint over HTTPS.
+#
+# Sends the commands under test to that service, so it runs only on a labelled
+# PR from a branch in this repository. Pull requests from forks are not given
+# repository secrets by GitHub, which is deliberate: the job says so plainly
+# instead of failing with an opaque authentication error.
+name: integration-jev
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+permissions:
+  contents: read
+concurrency:
+  group: integration-jev-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  jev-remote:
+    name: jev-remote
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the integration-test label
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'integration-test') }}
+        run: |
+          echo "::error::Integration tests have not run. Add the 'integration-test' label to this PR."
+          exit 1
+      - name: Require a repository secret
+        if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          echo "::error::This PR is from a fork, so GitHub does not expose TYPESAFE_API_KEY to it. A maintainer must re-run these tests from a branch in this repository."
+          exit 1
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      # libssl-dev is required here: without OpenSSL the build supports only
+      # http:// endpoints and this test uses https://.
+      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libicu-dev nlohmann-json3-dev libsqlite3-dev libssl-dev sqlite3
+      - run: make loadable
+      - name: Decision checks against the remote endpoint
+        env:
+          LAYA_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+        run: |
+          if [ -z "$LAYA_API_KEY" ]; then
+            echo "::error::TYPESAFE_API_KEY is empty. Set it with: gh secret set TYPESAFE_API_KEY"
+            exit 1
+          fi
+          python3 .github/scripts/integration_test.py \
+            --extension dist/debug/laya \
+            --backend https://api.typesafe.ai/v1/systemone \
+            --profile jev

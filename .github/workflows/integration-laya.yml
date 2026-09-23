@@ -1,0 +1,48 @@
+# Integration test against a local Laya checkpoint, in-process, no network.
+#
+# The job always runs so its check context always reports; a PR without the
+# integration-test label fails at the gate with an actionable message rather
+# than hanging forever as an unreported required check.
+name: integration-laya
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+permissions:
+  contents: read
+concurrency:
+  group: integration-laya-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  laya-local:
+    name: laya-local
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the integration-test label
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'integration-test') }}
+        run: |
+          echo "::error::Integration tests have not run. Add the 'integration-test' label to this PR."
+          exit 1
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libicu-dev nlohmann-json3-dev libsqlite3-dev libssl-dev sqlite3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install huggingface_hub
+      # The checkpoint is ~840 MB and pinned in the Makefile, so key the cache
+      # on the Makefile rather than re-downloading it on every run.
+      - uses: actions/cache@v4
+        with:
+          path: models/laya
+          key: laya-checkpoint-${{ hashFiles('Makefile') }}
+      - name: Fetch the pinned checkpoint
+        run: test -d models/laya || make model
+      - run: make loadable
+      - name: Decision checks against the local checkpoint
+        run: |
+          python3 .github/scripts/integration_test.py \
+            --extension dist/debug/laya \
+            --backend models/laya \
+            --profile laya
