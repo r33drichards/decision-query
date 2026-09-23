@@ -2,8 +2,8 @@
  *
  * No exception crosses this boundary and no PostgreSQL error is raised behind
  * it; failures come back as malloc'd messages that the caller reports. */
-#ifndef PGLAYA_BRIDGE_H
-#define PGLAYA_BRIDGE_H
+#ifndef PGDQ_BRIDGE_H
+#define PGDQ_BRIDGE_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,4 +50,4 @@ void pgdq_free(char *pointer);
 }
 #endif
 
-#endif /* PGLAYA_BRIDGE_H */
+#endif /* PGDQ_BRIDGE_H */

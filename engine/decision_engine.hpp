@@ -146,7 +146,7 @@ namespace dq {
       cli.set_connection_timeout(30, 0);
       // Content-Type is supplied by Post()'s final argument; setting it here too
       // sends the header twice and the server parses the body as a string.
-      httplib::Headers headers{{"User-Agent", "sqlaya/" DQ_UA_VERSION}};
+      httplib::Headers headers{{"User-Agent", "decision-query/" DQ_UA_VERSION}};
       if (!key.empty()) headers.emplace("Authorization", "Bearer " + key);
       auto res = cli.Post(path.c_str(), headers, body.dump(), "application/json");
       if (!res)

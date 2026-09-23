@@ -1,8 +1,10 @@
+import http.server
 import json
 import os
 import sqlite3
 import subprocess
 import sys
+import threading
 import unittest
 
 EXT_PATH = "./dist/debug/decision_query"
@@ -112,6 +114,42 @@ class TestCases(unittest.TestCase):
       scalar("select decide('state', '{}')")
     with self.assertRaisesRegex(sqlite3.OperationalError, "nonempty JSON object"):
       scalar("select decide('state', '[1]')")
+
+  def test_http_backend(self):
+    # A fake System One endpoint records the request and answers with a fixed
+    # probability, so the HTTP backend is exercised without a real service.
+    seen = {}
+
+    class Endpoint(http.server.BaseHTTPRequestHandler):
+      def do_POST(self):
+        seen["path"] = self.path
+        seen["user_agent"] = self.headers.get("User-Agent")
+        seen["authorization"] = self.headers.get("Authorization")
+        seen["body"] = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        reply = json.dumps({"model": "fake-model", "answers": {"q": {"noul": 0.25}}}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(reply)))
+        self.end_headers()
+        self.wfile.write(reply)
+
+      def log_message(self, *args):
+        pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), Endpoint)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+      url = f"http://127.0.0.1:{server.server_port}/v1/systemone"
+      self.assertEqual(scalar("select dq_load(?, ?)", url, json.dumps({"key": "test-key"})), "remote")
+      self.assertEqual(scalar("select noul('state', 'question')"), 0.25)
+    finally:
+      server.shutdown()
+      server.server_close()
+    self.assertEqual(seen["path"], "/v1/systemone")
+    self.assertEqual(seen["authorization"], "Bearer test-key")
+    self.assertEqual(seen["body"], {"state": "state", "model": "jev-latest",
+                                    "questions": {"q": {"type": "noul", "instructions": "question"}}})
+    self.assertEqual(seen["user_agent"], "decision-query/" + scalar("select dq_version()"))
 
   def test_no_model_error(self):
     # A fresh process with no resident model and no checkpoint at DQ_MODEL_DIR.

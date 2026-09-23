@@ -166,7 +166,7 @@ create temp table judged as
 select
   command,
   count(*) as n,
-  laya(command, json_object(
+  decide(command, json_object(
     -- a yes/no probability
     'secret', json_object(
       'type','noul',
@@ -183,7 +183,7 @@ where deleted_at is null
   and timestamp >= (unixepoch('now','-30 days')  * 1000000000)
 group by command;
 
--- laya() returns JSON, so pull the fields out with json_extract
+-- decide() returns JSON, so pull the fields out with json_extract
 select round(json_extract(answer,'$.secret.noul'), 3) as p,
        json_extract(answer,'$.provider.choice')       as provider,
        n,
@@ -340,7 +340,7 @@ commands in full, secrets included.
 - `score(text, question, json_array(...))` — an ordinal score, e.g. how
   destructive a command is
 - `choice(text, question, json_array(...))` — a category on its own
-- `laya(text, questions)` — several questions in one pass, as above
+- `decide(text, questions)` — several questions in one pass, as above
 - [Load options](../README.md#load-options) — backend selection and model variants
 - [Precision](../laya.cpp/docs/precision.md) — the accuracy contract and where
   Metal departs from it

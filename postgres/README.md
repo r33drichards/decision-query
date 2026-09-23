@@ -1,8 +1,8 @@
-# laya for PostgreSQL
+# decision-query for PostgreSQL
 
-The `laya` PostgreSQL extension exposes the same Laya typed decisions as the SQLite
+The `decision_query` PostgreSQL extension exposes the same Laya typed decisions as the SQLite
 module in this repository, built from the [pg_extension](https://github.com/mkindahl/pg_extension)
-CMake template and the shared engine in `engine/laya_engine.hpp`.
+CMake template and the shared engine in `engine/decision_engine.hpp`.
 
 ```sql
 CREATE EXTENSION decision_query;
@@ -15,7 +15,7 @@ SELECT id, choice(body, 'Which department should handle this?',
                        '["billing", "technical", "sales"]') AS department
   FROM tickets;
 
-SELECT id, laya(jsonb_build_object('subject', subject, 'body', body),
+SELECT id, decide(jsonb_build_object('subject', subject, 'body', body),
                 '{"urgency": {"type": "score",
                               "instructions": "How urgent is the request?",
                               "criteria": ["not urgent", "soon", "immediate"]}}')
@@ -32,12 +32,12 @@ optional CUDA). On Debian-like systems:
 ```sh
 sudo apt-get install cmake ninja-build libicu-dev nlohmann-json3-dev \
   postgresql-16 postgresql-server-dev-16
-make postgres               # build/postgres/laya.so and laya.control
+make postgres               # build/postgres/decision_query.so and decision_query.control
 sudo make postgres-install  # copies into the directories reported by pg_config
 ```
 
 Set `PGPATH` (or `PostgreSQL_ROOT`) to select another PostgreSQL installation, and
-`CMAKE_FLAGS='-DSQDQ_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=<arch>'` to force the CUDA
+`CMAKE_FLAGS='-DDQ_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=<arch>'` to force the CUDA
 backend. The module exports only the PostgreSQL entry points; ggml and the laya runtime
 are folded in, and ICU (plus the CUDA runtime, when enabled) is linked dynamically.
 
@@ -51,7 +51,7 @@ are folded in, and ICU (plus the CUDA runtime, when enabled) is linked dynamical
 | `noul(state, instructions text)`, `noul(state, instructions text, criteria jsonb)` | float8 | Probability that the statement holds. Optional criteria: `{"true": "...", "false": "..."}`. |
 | `choice(state, instructions text, criteria jsonb)` | text | The selected option. Criteria: a JSON array of names or an object mapping names to descriptions. |
 | `score(state, instructions text, criteria jsonb)` | float8 | Expected ordinal score over the criteria levels, scored 0 through n-1. |
-| `laya(state, questions jsonb)` | jsonb | The full answers object for a questions object, evaluated in one batch. |
+| `decide(state, questions jsonb)` | jsonb | The full answers object for a questions object, evaluated in one batch. |
 
 `state` is `text` or `jsonb`. A jsonb state is passed to the model as structured data,
 so `jsonb_build_object('subject', subject, 'body', body)` summarizes a row. All

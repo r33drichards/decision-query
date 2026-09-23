@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Integration checks for a sqlaya decision backend.
+"""Integration checks for a decision-query decision backend.
 
 Run against a local checkpoint directory or an HTTP endpoint. The structural
 checks are identical for both; the behavioural thresholds differ, because the
