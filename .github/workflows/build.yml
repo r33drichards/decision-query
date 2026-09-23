@@ -43,7 +43,7 @@ jobs:
       - run: make test-postgres
       - uses: actions/upload-artifact@v4
         with:
-          name: pglaya-linux-x86_64
+          name: pgdq-linux-x86_64
           path: |
             build/postgres/laya.so
             build/postgres/laya.control

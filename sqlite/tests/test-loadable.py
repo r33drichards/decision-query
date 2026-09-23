@@ -5,9 +5,9 @@ import subprocess
 import sys
 import unittest
 
-EXT_PATH = "./dist/debug/laya"
-MODEL_DIR = os.environ.get("LAYA_MODEL_DIR")
-LAYA_OPTIONS = os.environ.get("LAYA_OPTIONS", "{}")
+EXT_PATH = "./dist/debug/decision_query"
+MODEL_DIR = os.environ.get("DQ_MODEL_DIR")
+DQ_OPTIONS = os.environ.get("DQ_OPTIONS", "{}")
 CLI_PATH = os.environ.get("LAYA_CLI", "./build/bin/laya-cli")
 CLI_FLAGS = os.environ.get("LAYA_CLI_FLAGS", "--cpu").split()
 SMOKE_CASES = "./laya.cpp/benchmarks/cases/smoke.json"
@@ -30,12 +30,12 @@ db = connect()
 
 FUNCTIONS = [
   "laya",
-  "laya_backend",
-  "laya_choice",
-  "laya_load",
-  "laya_noul",
-  "laya_score",
-  "laya_version",
+  "dq_backend",
+  "choice",
+  "dq_load",
+  "noul",
+  "score",
+  "dq_version",
 ]
 
 MODULES = []
@@ -64,43 +64,43 @@ class TestCases(unittest.TestCase):
     modules = [row[0] for row in db.execute("select name from loaded_modules").fetchall()]
     self.assertEqual(modules, MODULES)
 
-  def test_laya_version(self):
-    self.assertEqual(scalar("select laya_version()")[0], "v")
+  def test_dq_version(self):
+    self.assertEqual(scalar("select dq_version()")[0], "v")
 
-  def test_laya_backend(self):
+  def test_dq_backend(self):
     # Loading is process wide, so the model-backed tests may already have loaded one.
-    backend = scalar("select laya_backend()")
+    backend = scalar("select dq_backend()")
     self.assertTrue(backend is None or isinstance(backend, str))
 
-  def test_laya_load(self):
+  def test_dq_load(self):
     with self.assertRaisesRegex(sqlite3.OperationalError, "Not a checkpoint directory"):
-      scalar("select laya_load('/nonexistent/laya')")
+      scalar("select dq_load('/nonexistent/laya')")
     with self.assertRaisesRegex(sqlite3.OperationalError, "Unknown laya option"):
-      scalar("select laya_load('/nonexistent/laya', '{\"gpu\": true}')")
+      scalar("select dq_load('/nonexistent/laya', '{\"gpu\": true}')")
     with self.assertRaisesRegex(sqlite3.OperationalError, "Unknown model variant"):
-      scalar("select laya_load('/nonexistent/laya', '{\"variant\": \"french\"}')")
+      scalar("select dq_load('/nonexistent/laya', '{\"variant\": \"french\"}')")
     with self.assertRaisesRegex(sqlite3.OperationalError, "must be valid JSON"):
-      scalar("select laya_load('/nonexistent/laya', 'nope')")
+      scalar("select dq_load('/nonexistent/laya', 'nope')")
     with self.assertRaisesRegex(sqlite3.OperationalError, "requires a checkpoint directory"):
-      scalar("select laya_load(NULL)")
+      scalar("select dq_load(NULL)")
 
-  def test_laya_noul(self):
-    self.assertIsNone(scalar("select laya_noul(NULL, 'question')"))
-    self.assertIsNone(scalar("select laya_noul('state', NULL)"))
-    self.assertIsNone(scalar("select laya_noul('state', 'question', NULL)"))
-    with self.assertRaisesRegex(sqlite3.OperationalError, "laya_noul criteria must be valid JSON"):
-      scalar("select laya_noul('state', 'question', 'nope')")
+  def test_noul(self):
+    self.assertIsNone(scalar("select noul(NULL, 'question')"))
+    self.assertIsNone(scalar("select noul('state', NULL)"))
+    self.assertIsNone(scalar("select noul('state', 'question', NULL)"))
+    with self.assertRaisesRegex(sqlite3.OperationalError, "noul criteria must be valid JSON"):
+      scalar("select noul('state', 'question', 'nope')")
 
-  def test_laya_choice(self):
-    self.assertIsNone(scalar("select laya_choice(NULL, 'question', '[\"a\",\"b\"]')"))
-    self.assertIsNone(scalar("select laya_choice('state', 'question', NULL)"))
-    with self.assertRaisesRegex(sqlite3.OperationalError, "laya_choice criteria must be valid JSON"):
-      scalar("select laya_choice('state', 'question', 'nope')")
+  def test_choice(self):
+    self.assertIsNone(scalar("select choice(NULL, 'question', '[\"a\",\"b\"]')"))
+    self.assertIsNone(scalar("select choice('state', 'question', NULL)"))
+    with self.assertRaisesRegex(sqlite3.OperationalError, "choice criteria must be valid JSON"):
+      scalar("select choice('state', 'question', 'nope')")
 
-  def test_laya_score(self):
-    self.assertIsNone(scalar("select laya_score(NULL, 'question', '[\"low\",\"high\"]')"))
-    with self.assertRaisesRegex(sqlite3.OperationalError, "laya_score criteria must be valid JSON"):
-      scalar("select laya_score('state', 'question', '{')")
+  def test_score(self):
+    self.assertIsNone(scalar("select score(NULL, 'question', '[\"low\",\"high\"]')"))
+    with self.assertRaisesRegex(sqlite3.OperationalError, "score criteria must be valid JSON"):
+      scalar("select score('state', 'question', '{')")
 
   def test_laya(self):
     self.assertIsNone(scalar("select laya(NULL, '{}')"))
@@ -113,51 +113,51 @@ class TestCases(unittest.TestCase):
       scalar("select laya('state', '[1]')")
 
   def test_no_model_error(self):
-    # A fresh process with no resident model and no checkpoint at LAYA_MODEL_DIR.
+    # A fresh process with no resident model and no checkpoint at DQ_MODEL_DIR.
     script = (
       "import sqlite3; db = sqlite3.connect(':memory:'); db.enable_load_extension(True); "
-      f"db.load_extension({EXT_PATH!r}); db.execute(\"select laya_noul('state', 'question')\")"
+      f"db.load_extension({EXT_PATH!r}); db.execute(\"select noul('state', 'question')\")"
     )
-    env = dict(os.environ, LAYA_MODEL_DIR="/nonexistent/laya")
-    env.pop("LAYA_OPTIONS", None)
+    env = dict(os.environ, DQ_MODEL_DIR="/nonexistent/laya")
+    env.pop("DQ_OPTIONS", None)
     result = subprocess.run([sys.executable, "-c", script], env=env, capture_output=True, text=True)
     self.assertNotEqual(result.returncode, 0)
-    self.assertIn("No Laya model loaded; call laya_load(dir) or set LAYA_MODEL_DIR", result.stderr)
+    self.assertIn("No Laya model loaded; call dq_load(dir) or set DQ_MODEL_DIR", result.stderr)
 
 
-@unittest.skipUnless(MODEL_DIR, "set LAYA_MODEL_DIR to a checkpoint directory to run model-backed tests")
+@unittest.skipUnless(MODEL_DIR, "set DQ_MODEL_DIR to a checkpoint directory to run model-backed tests")
 class TestModel(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
-    cls.backend = scalar("select laya_load(?, ?)", MODEL_DIR, LAYA_OPTIONS)
+    cls.backend = scalar("select dq_load(?, ?)", MODEL_DIR, DQ_OPTIONS)
 
-  def test_laya_load(self):
+  def test_dq_load(self):
     self.assertTrue(self.backend)
-    self.assertEqual(scalar("select laya_backend()"), self.backend)
+    self.assertEqual(scalar("select dq_backend()"), self.backend)
     # Reloading the same checkpoint keeps the extension usable.
-    self.assertEqual(scalar("select laya_load(?, ?)", MODEL_DIR, LAYA_OPTIONS), self.backend)
+    self.assertEqual(scalar("select dq_load(?, ?)", MODEL_DIR, DQ_OPTIONS), self.backend)
 
-  def test_laya_noul(self):
-    probability = scalar("select laya_noul('Please refund the duplicate charge.', 'Does the customer ask for a refund?')")
+  def test_noul(self):
+    probability = scalar("select noul('Please refund the duplicate charge.', 'Does the customer ask for a refund?')")
     self.assertGreater(probability, 0.5)
     self.assertLessEqual(probability, 1.0)
-    negative = scalar("select laya_noul('The service works well. Thank you!', 'Is this a complaint?')")
+    negative = scalar("select noul('The service works well. Thank you!', 'Is this a complaint?')")
     self.assertLess(negative, 0.5)
-    described = scalar("select laya_noul('Please refund the duplicate charge.', 'Does the customer ask for a refund?', "
+    described = scalar("select noul('Please refund the duplicate charge.', 'Does the customer ask for a refund?', "
                        "json_object('true', 'a refund is requested', 'false', 'no refund is requested'))")
     self.assertGreater(described, 0.5)
 
-  def test_laya_choice(self):
-    choice = scalar("select laya_choice(?, 'Which department should handle this?', ?)",
+  def test_choice(self):
+    choice = scalar("select choice(?, 'Which department should handle this?', ?)",
                     BILLING_STATE["body"], json.dumps(BILLING_QUESTIONS["department"]["criteria"]))
     self.assertEqual(choice, "billing")
     # A JSON array of names is accepted as criteria too.
-    choice = scalar("select laya_choice(?, 'Which department should handle this?', json_array('billing', 'technical', 'sales'))",
+    choice = scalar("select choice(?, 'Which department should handle this?', json_array('billing', 'technical', 'sales'))",
                     BILLING_STATE["body"])
     self.assertEqual(choice, "billing")
 
-  def test_laya_score(self):
-    score = scalar("select laya_score(?, 'How urgent is the request?', json_array('not urgent', 'soon', 'immediate'))",
+  def test_score(self):
+    score = scalar("select score(?, 'How urgent is the request?', json_array('not urgent', 'soon', 'immediate'))",
                    BILLING_STATE["body"])
     self.assertGreaterEqual(score, 0.0)
     self.assertLessEqual(score, 2.0)
@@ -184,9 +184,9 @@ class TestModel(unittest.TestCase):
       ("The service works well. Thank you!",),
       ("The login page returns a 500 error since this morning.",),
     ])
-    refunds = db.execute("select id from tickets where laya_noul(body, 'Does the customer request a refund?') > 0.5 order by id").fetchall()
+    refunds = db.execute("select id from tickets where noul(body, 'Does the customer request a refund?') > 0.5 order by id").fetchall()
     self.assertEqual(refunds, [(1,)])
-    departments = db.execute("select id, laya_choice(body, 'Which department should handle this?', json_array('billing', 'technical', 'sales')) "
+    departments = db.execute("select id, choice(body, 'Which department should handle this?', json_array('billing', 'technical', 'sales')) "
                              "from tickets order by id").fetchall()
     self.assertEqual(departments[0], (1, "billing"))
     self.assertEqual(departments[2], (3, "technical"))

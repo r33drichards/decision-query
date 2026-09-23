@@ -16,30 +16,30 @@
 #include "laya/runtime.hpp"
 #include <httplib.h>
 
-#ifndef SQLAYA_CUDA_DEFAULT
-#  define SQLAYA_CUDA_DEFAULT 0
+#ifndef DQ_CUDA_DEFAULT
+#  define DQ_CUDA_DEFAULT 0
 #endif
 
 // Each target defines its own version macro; the shared engine belongs to both.
-#if defined(SQLITE_LAYA_VERSION)
-#define SQLAYA_UA_VERSION SQLITE_LAYA_VERSION
-#elif defined(PGLAYA_VERSION)
-#define SQLAYA_UA_VERSION PGLAYA_VERSION
+#if defined(SQLITE_DQ_VERSION)
+#define DQ_UA_VERSION SQLITE_DQ_VERSION
+#elif defined(PGDQ_VERSION)
+#define DQ_UA_VERSION PGDQ_VERSION
 #else
-#define SQLAYA_UA_VERSION "dev"
+#define DQ_UA_VERSION "dev"
 #endif
 
-namespace sqlaya {
+namespace dq {
   using json = laya::json;
 
   constexpr const char *NOT_LOADED
-      = "No Laya model loaded; call laya_load(dir) or set LAYA_MODEL_DIR";
+      = "No Laya model loaded; call dq_load(dir) or set DQ_MODEL_DIR";
 
   struct load_options {
     std::string variant = "english";
     std::string key, model, key_file;
-    bool cuda = SQLAYA_CUDA_DEFAULT != 0;
-    bool metal = SQLAYA_METAL_DEFAULT != 0;
+    bool cuda = DQ_CUDA_DEFAULT != 0;
+    bool metal = DQ_METAL_DEFAULT != 0;
     bool bf16 = false, flash = false, tensor_core = false;
   };
 
@@ -143,7 +143,7 @@ namespace sqlaya {
       cli.set_connection_timeout(30, 0);
       // Content-Type is supplied by Post()'s final argument; setting it here too
       // sends the header twice and the server parses the body as a string.
-      httplib::Headers headers{{"User-Agent", "sqlaya/" SQLAYA_UA_VERSION}};
+      httplib::Headers headers{{"User-Agent", "sqlaya/" DQ_UA_VERSION}};
       if (!key.empty()) headers.emplace("Authorization", "Bearer " + key);
       auto res = cli.Post(path.c_str(), headers, body.dump(), "application/json");
       if (!res)
@@ -184,9 +184,9 @@ namespace sqlaya {
         std::string key = options.key;
         if (key.empty() && !options.key_file.empty()) key = read_key_file(options.key_file);
         if (key.empty())
-          if (const char *e = std::getenv("LAYA_API_KEY_FILE")) key = read_key_file(e);
+          if (const char *e = std::getenv("DQ_API_KEY_FILE")) key = read_key_file(e);
         if (key.empty())
-          if (const char *env = std::getenv("LAYA_API_KEY")) key = env;
+          if (const char *env = std::getenv("DQ_API_KEY")) key = env;
         fresh = std::make_unique<http_backend>(directory, key, options.model);
       } else {
         const auto path = checkpoint_path(directory, options);
@@ -219,8 +219,8 @@ namespace sqlaya {
   private:
     // Called with the mutex held.
     void load_fallback(const std::string &fallback_dir, const std::string &fallback_options) {
-      const char *directory = std::getenv("LAYA_MODEL_DIR");
-      const char *option_text = std::getenv("LAYA_OPTIONS");
+      const char *directory = std::getenv("DQ_MODEL_DIR");
+      const char *option_text = std::getenv("DQ_OPTIONS");
       const std::string model = !fallback_dir.empty()     ? fallback_dir
                                 : directory && *directory ? std::string(directory)
                                                           : std::string("models/laya");
@@ -241,9 +241,9 @@ namespace sqlaya {
         std::string k = options.key;
         if (k.empty() && !options.key_file.empty()) k = read_key_file(options.key_file);
         if (k.empty())
-          if (const char *e = std::getenv("LAYA_API_KEY_FILE")) k = read_key_file(e);
+          if (const char *e = std::getenv("DQ_API_KEY_FILE")) k = read_key_file(e);
         if (k.empty())
-          if (const char *env = std::getenv("LAYA_API_KEY")) k = env;
+          if (const char *env = std::getenv("DQ_API_KEY")) k = env;
         fresh = std::make_unique<http_backend>(model, k, options.model);
       } else {
         const auto path = checkpoint_path(model, options);
@@ -254,4 +254,4 @@ namespace sqlaya {
       agent = std::move(fresh);
     }
   };
-}  // namespace sqlaya
+}  // namespace dq

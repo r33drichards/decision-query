@@ -15,15 +15,15 @@ which loads the extension into a [sqlite3 Connection](https://docs.python.org/3/
 
 ```python
 import sqlite3
-import sqlite_laya
+import decision_query
 
 conn = sqlite3.connect(':memory:')
 conn.enable_load_extension(True)
-sqlite_laya.load(conn)
+decision_query.load(conn)
 conn.enable_load_extension(False)
 
-conn.execute("select laya_load('models/laya')")
-print(conn.execute("select laya_noul('Please refund the duplicate charge.', 'Does the customer ask for a refund?')").fetchone()[0])
+conn.execute("select dq_load('models/laya')")
+print(conn.execute("select noul('Please refund the duplicate charge.', 'Does the customer ask for a refund?')").fetchone()[0])
 ```
 
 See the repository README for the SQL API and model setup.

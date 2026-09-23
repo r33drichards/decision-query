@@ -1,17 +1,17 @@
 import unittest
 import sqlite3
-import sqlite_laya
+import decision_query
 
 class TestSqliteLayaPython(unittest.TestCase):
   def test_path(self):
-    self.assertEqual(type(sqlite_laya.loadable_path()), str)
+    self.assertEqual(type(decision_query.loadable_path()), str)
   
   def test_load(self):
     db = sqlite3.connect(':memory:')
     db.enable_load_extension(True)
-    sqlite_laya.load(db)
+    decision_query.load(db)
 
-    version, = db.execute('select laya_version()').fetchone()
+    version, = db.execute('select dq_version()').fetchone()
     self.assertEqual(version[0], "v")
     
 if __name__ == '__main__':

@@ -9,7 +9,7 @@
 # The consequence is deliberate and worth stating plainly: a pull request from
 # a fork can merge without the remote backend ever having been exercised.
 # integration-laya still runs in full on forks, since it needs no secret.
-name: integration-jev
+name: integration-remote
 on:
   pull_request:
     branches: [main]
@@ -18,11 +18,11 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: integration-jev-${{ github.event.pull_request.number || github.ref }}
+  group: integration-remote-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
-  jev-remote:
-    name: jev-remote
+  remote-backend:
+    name: remote-backend
     runs-on: ubuntu-latest
     steps:
       # First, so a fork is never blocked by the label gate on a job that
@@ -58,13 +58,13 @@ jobs:
       - name: Decision checks against the remote endpoint
         if: ${{ steps.gate.outputs.skip != 'true' }}
         env:
-          LAYA_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          DQ_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
         run: |
-          if [ -z "$LAYA_API_KEY" ]; then
+          if [ -z "$DQ_API_KEY" ]; then
             echo "::error::TYPESAFE_API_KEY is empty. Set it with: gh secret set TYPESAFE_API_KEY"
             exit 1
           fi
           python3 .github/scripts/integration_test.py \
-            --extension dist/debug/laya \
+            --extension dist/debug/decision_query \
             --backend https://api.typesafe.ai/v1/systemone \
             --profile jev

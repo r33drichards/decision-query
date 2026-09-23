@@ -39,7 +39,7 @@
 # 2.8.8)
 #
 # ----------------------------------------------------------------------------
-# sqlaya: adds TARGET (CMake target name when it must differ from the extension
+# decision-query: adds TARGET (CMake target name when it must differ from the extension
 # name), COMMENT and TEMP_CONFIG (pg_regress --temp-config) options to
 # add_postgresql_extension.
 #

@@ -1,7 +1,7 @@
 import os
 import sqlite3
 
-from sqlite_laya.version import __version_info__, __version__
+from decision_query.version import __version_info__, __version__
 
 
 def loadable_path():

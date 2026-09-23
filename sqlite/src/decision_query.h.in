@@ -1,0 +1,18 @@
+#ifndef DECISION_QUERY_H
+#define DECISION_QUERY_H
+
+#include "sqlite3ext.h"
+
+#define SQLITE_DQ_VERSION "@SQLITE_DQ_VERSION@"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int sqlite3_decisionquery_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* DECISION_QUERY_H */
