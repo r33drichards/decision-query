@@ -14,10 +14,11 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, labeled, unlabeled]
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: integration-jev-${{ github.event.pull_request.number }}
+  group: integration-jev-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   jev-remote:
@@ -29,14 +30,18 @@ jobs:
       - name: Check whether this PR can reach the secret
         id: gate
         run: |
-          if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+          # Only a pull request can come from a fork. On a manual run the
+          # pull_request context is empty, which would otherwise look like a
+          # fork and silently skip the whole test.
+          if [ "${{ github.event_name }}" = "pull_request" ] \
+             && [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
             echo "::notice::Pull request is from a fork, which GitHub does not give repository secrets. The remote backend was NOT tested. A maintainer should re-run this from a branch in this repository before trusting it."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Require the integration-test label
-        if: ${{ steps.gate.outputs.skip != 'true' && !contains(github.event.pull_request.labels.*.name, 'integration-test') }}
+        if: ${{ github.event_name == 'pull_request' && steps.gate.outputs.skip != 'true' && !contains(github.event.pull_request.labels.*.name, 'integration-test') }}
         run: |
           echo "::error::Integration tests have not run. Add the 'integration-test' label to this PR."
           exit 1

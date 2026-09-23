@@ -8,10 +8,11 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, labeled, unlabeled]
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: integration-laya-${{ github.event.pull_request.number }}
+  group: integration-laya-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   laya-local:
@@ -19,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Require the integration-test label
-        if: ${{ !contains(github.event.pull_request.labels.*.name, 'integration-test') }}
+        if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'integration-test') }}
         run: |
           echo "::error::Integration tests have not run. Add the 'integration-test' label to this PR."
           exit 1
