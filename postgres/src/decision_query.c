@@ -120,8 +120,8 @@ Datum dq_backend(PG_FUNCTION_ARGS) {
 PG_FUNCTION_INFO_V1(dq_load);
 
 Datum dq_load(PG_FUNCTION_ARGS) {
-  char *directory = text_to_cstring(PG_GETARG_TEXT_PP(0));
-  char *options = PG_NARGS() > 1 ? jsonb_argument(fcinfo, 1) : NULL;
+  const char *directory = text_to_cstring(PG_GETARG_TEXT_PP(0));
+  const char *options = PG_NARGS() > 1 ? jsonb_argument(fcinfo, 1) : NULL;
   char *backend = NULL;
   char *error = NULL;
   if (pgdq_load(directory, options, &backend, &error) != 0)
@@ -155,7 +155,7 @@ PG_FUNCTION_INFO_V1(decide_answers);
 Datum decide_answers(PG_FUNCTION_ARGS) {
   pgdq_request request = {0};
   pgdq_response response;
-  char *answers;
+  const char *answers = NULL;
   request.state = state_argument(fcinfo, 0, &request.state_is_json);
   request.questions = jsonb_argument(fcinfo, 1);
   response = evaluate(&request);

@@ -129,7 +129,26 @@ postgres-install: postgres
 
 # Runs pg_regress on a temporary instance; the extension must be installed.
 test-postgres:
-	ctest --test-dir $(BUILD) --output-on-failure
+	ctest --test-dir $(BUILD) --output-on-failure -LE 'unit|fuzz'
+
+# Native unit tests (tests/); need no checkpoint. Add sanitizers with e.g.
+# CMAKE_FLAGS='-DDQ_ENABLE_SANITIZER_ADDRESS=ON -DDQ_ENABLE_SANITIZER_UNDEFINED=ON'.
+test-native:
+	cmake -S . -B $(BUILD) $(CMAKE_FLAGS) -DDQ_BUILD_TESTS=ON && cmake --build $(BUILD) --parallel --target dq_tests
+	ctest --test-dir $(BUILD) -L unit --output-on-failure
+
+# The native unit tests under valgrind (ctest -T memcheck); logs land in
+# $(BUILD)/Testing/Temporary/MemoryChecker.*.log.
+memcheck: test-native
+	ctest --test-dir $(BUILD) -L unit -T memcheck --output-on-failure
+
+# libFuzzer targets (fuzz/); needs clang. Runs each for FUZZ_RUNTIME seconds.
+FUZZ_RUNTIME?=60
+fuzz:
+	CC=clang CXX=clang++ cmake -S . -B build_fuzz $(CMAKE_FLAGS) -DDQ_BUILD_FUZZ_TESTS=ON \
+		-DDQ_ENABLE_SANITIZER_ADDRESS=ON -DDQ_ENABLE_SANITIZER_UNDEFINED=ON -DFUZZ_RUNTIME=$(FUZZ_RUNTIME)
+	cmake --build build_fuzz --parallel --target fuzz_options fuzz_endpoint fuzz_sql
+	ctest --test-dir build_fuzz -L fuzz --output-on-failure
 
 test-loadable:
 	$(PYTHON) sqlite/tests/test-loadable.py
@@ -144,4 +163,5 @@ test:
 .PHONY: clean test \
 	loadable loadable-release static static-release cli \
 	python python-release python-versions model \
-	postgres postgres-install test-postgres test-loadable test-python
+	postgres postgres-install test-postgres test-loadable test-python \
+	test-native memcheck fuzz
