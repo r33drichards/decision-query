@@ -6,6 +6,8 @@
 
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -26,7 +28,7 @@ namespace sqlaya {
 
   struct load_options {
     std::string variant = "english";
-    std::string key, model;
+    std::string key, model, key_file;
     bool cuda = SQLAYA_CUDA_DEFAULT != 0;
     bool metal = SQLAYA_METAL_DEFAULT != 0;
     bool bf16 = false, flash = false, tensor_core = false;
@@ -37,9 +39,11 @@ namespace sqlaya {
     if (value.is_null()) return options;
     if (!value.is_object()) throw std::invalid_argument("laya options must be a JSON object");
     for (const auto &[key, item] : value.items()) {
-      if (key == "key" || key == "model") {
+      if (key == "key" || key == "model" || key == "key_file") {
         if (!item.is_string()) throw std::invalid_argument(key + " must be a string");
-        (key == "key" ? options.key : options.model) = item.get<std::string>();
+        if (key == "key") options.key = item.get<std::string>();
+        else if (key == "model") options.model = item.get<std::string>();
+        else options.key_file = item.get<std::string>();
         continue;
       }
       if (key == "variant") {
@@ -77,6 +81,19 @@ namespace sqlaya {
   // A decision backend answers typed questions about a state. The local backend
   // runs a Laya checkpoint in-process; the HTTP backend forwards to any service
   // speaking the System One request shape (TypeSafe Jev, reflex, djev).
+  // Reads a bearer token from a file, trimming trailing whitespace so an
+  // editor-added newline does not end up inside the Authorization header.
+  inline std::string read_key_file(const std::string &path) {
+    std::ifstream in(path);
+    if (!in) throw std::runtime_error("Cannot read laya key file: " + path);
+    std::string key((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    while (!key.empty() && (key.back() == '\n' || key.back() == '\r' ||
+                            key.back() == ' ' || key.back() == '\t'))
+      key.pop_back();
+    if (key.empty()) throw std::runtime_error("laya key file is empty: " + path);
+    return key;
+  }
+
   struct backend_base {
     virtual ~backend_base() = default;
     virtual json predict(const json &requests) = 0;
@@ -152,7 +169,13 @@ namespace sqlaya {
       if (directory.rfind("http://", 0) == 0 || directory.rfind("https://", 0) == 0) {
         // Credentials come from the environment by default so they stay out of
         // SQL text, and therefore out of shell history.
+        // Precedence: explicit option, then a key file, then the environment.
+        // A file is preferred on multi-user servers: an environment variable is
+        // set once for the whole cluster and cannot be scoped to a role.
         std::string key = options.key;
+        if (key.empty() && !options.key_file.empty()) key = read_key_file(options.key_file);
+        if (key.empty())
+          if (const char *e = std::getenv("LAYA_API_KEY_FILE")) key = read_key_file(e);
         if (key.empty())
           if (const char *env = std::getenv("LAYA_API_KEY")) key = env;
         fresh = std::make_unique<http_backend>(directory, key, options.model);
@@ -207,6 +230,9 @@ namespace sqlaya {
       std::unique_ptr<backend_base> fresh;
       if (model.rfind("http://", 0) == 0 || model.rfind("https://", 0) == 0) {
         std::string k = options.key;
+        if (k.empty() && !options.key_file.empty()) k = read_key_file(options.key_file);
+        if (k.empty())
+          if (const char *e = std::getenv("LAYA_API_KEY_FILE")) k = read_key_file(e);
         if (k.empty())
           if (const char *env = std::getenv("LAYA_API_KEY")) k = env;
         fresh = std::make_unique<http_backend>(model, k, options.model);

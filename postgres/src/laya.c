@@ -16,6 +16,7 @@ PG_MODULE_MAGIC;
 
 static char *model_dir_setting;
 static char *options_setting;
+static char *api_key_file_setting;
 
 void _PG_init(void);
 
@@ -31,6 +32,19 @@ void _PG_init(void) {
       "Keys: variant, cuda, bf16, flash, tensor_core. Falls back to "
       "LAYA_OPTIONS.",
       &options_setting, "", PGC_USERSET, 0, NULL, NULL, NULL);
+  // A path, not the key itself: a GUC holding the secret would be visible in
+  // pg_settings and in any config dump, and `SET` would put it in
+  // pg_stat_activity and the statement log. SUPERUSER_ONLY because any role
+  // that can name the file can make the extension read it.
+  DefineCustomStringVariable(
+      "laya.api_key_file",
+      "File holding the bearer token for an HTTP decision endpoint.",
+      "Read once per backend when a URL endpoint loads. Prefer this to the "
+      "key option, which would place the secret in SQL text. Falls back to "
+      "the LAYA_API_KEY environment variable, which is cluster-wide and "
+      "therefore not per-role.",
+      &api_key_file_setting, "", PGC_SUSET, GUC_SUPERUSER_ONLY, NULL, NULL,
+      NULL);
 #if PG_VERSION_NUM >= 150000
   MarkGUCPrefixReserved("laya");
 #else

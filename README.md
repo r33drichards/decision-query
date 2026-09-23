@@ -98,9 +98,26 @@ select laya_load('http://localhost:8000/v1/systemone',
                  json_object('model', 'reflex-4b'));           -- a local server
 ```
 
-Credentials come from `LAYA_API_KEY` unless a `key` option overrides it. The
-environment is the better place: a key written into a SQL statement is a key in
-your shell history.
+Credentials resolve in this order: the `key` option, then `key_file`, then
+`$LAYA_API_KEY_FILE`, then `$LAYA_API_KEY`.
+
+Prefer a file. A key written into a SQL statement is a key in your shell history,
+and on PostgreSQL it also reaches `pg_stat_activity` and the statement log.
+
+```sql
+select laya_load('https://api.typesafe.ai/v1/systemone',
+                 json_object('key_file', '/etc/sqlaya/api-key'));
+```
+
+On PostgreSQL, set the superuser-only `laya.api_key_file` GUC instead:
+
+```
+laya.api_key_file = '/etc/sqlaya/api-key'   # postgresql.conf
+```
+
+It names a path rather than holding the secret, so the value never appears in
+`pg_settings`, `SHOW ALL` or a config dump. `$LAYA_API_KEY` works there too but
+is cluster-wide and cannot be scoped to a role.
 
 `https://` requires OpenSSL at build time. CMake reports which you have:
 `sqlaya: HTTPS decision endpoints enabled`, or a note that only `http://` will work.
