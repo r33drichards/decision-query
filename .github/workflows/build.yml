@@ -10,20 +10,20 @@ jobs:
   linux-x86_64:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libicu-dev nlohmann-json3-dev libsqlite3-dev
       - run: make loadable static
       - run: make test-loadable
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: pip install wheel
       - run: make python
       - run: pip install --find-links dist/debug/wheels decision_query
       - run: make test-python
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: decision-query-linux-x86_64
           path: |
@@ -34,7 +34,7 @@ jobs:
   postgres-linux-x86_64:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libicu-dev nlohmann-json3-dev postgresql-16 postgresql-server-dev-16
@@ -46,7 +46,7 @@ jobs:
       - name: Show the regression diff
         if: failure()
         run: cat build/postgres/regression.diffs || true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: pgdq-linux-x86_64
           path: |

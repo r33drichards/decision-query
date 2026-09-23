@@ -25,7 +25,7 @@ jobs:
           - { cc: gcc, cxx: g++ }
           - { cc: clang, cxx: clang++ }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - run: sudo apt-get update && sudo apt-get install -y $DEPS
@@ -51,7 +51,7 @@ jobs:
           - name: thread
             flags: -DDQ_ENABLE_SANITIZER_THREAD=ON
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - run: sudo apt-get update && sudo apt-get install -y $DEPS libclang-rt-18-dev
@@ -75,7 +75,7 @@ jobs:
   valgrind:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - run: sudo apt-get update && sudo apt-get install -y $DEPS valgrind

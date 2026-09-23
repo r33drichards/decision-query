@@ -24,17 +24,17 @@ jobs:
         run: |
           echo "::error::Integration tests have not run. Add the 'integration-test' label to this PR."
           exit 1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libicu-dev nlohmann-json3-dev libsqlite3-dev libssl-dev sqlite3
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: pip install huggingface_hub
       # The checkpoint is ~840 MB and pinned in the Makefile, so key the cache
       # on the Makefile rather than re-downloading it on every run.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: models/laya
           key: laya-checkpoint-${{ hashFiles('Makefile') }}
