@@ -43,7 +43,9 @@ namespace dq {
     bool bf16 = false, flash = false, tensor_core = false;
   };
 
-  load_options parse_options(const json &value) {
+  // A flat dispatch over the option keys; splitting it would not make it simpler.
+  // NOLINTNEXTLINE(readability-function-cognitive-complexity)
+  inline load_options parse_options(const json &value) {
     load_options options;
     if (value.is_null()) return options;
     if (!value.is_object()) throw std::invalid_argument("laya options must be a JSON object");
@@ -81,7 +83,8 @@ namespace dq {
     return options;
   }
 
-  std::filesystem::path checkpoint_path(const std::string &directory, const load_options &options) {
+  inline std::filesystem::path checkpoint_path(const std::string &directory,
+                                               const load_options &options) {
     std::filesystem::path path(directory);
     if (options.variant != "english") path /= options.variant;
     return path;

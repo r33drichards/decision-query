@@ -21,7 +21,8 @@ namespace {
 
   std::string text_of(sqlite3_value *value) {
     const unsigned char *text = sqlite3_value_text(value);
-    return text ? std::string(reinterpret_cast<const char *>(text), sqlite3_value_bytes(value))
+    return text ? std::string(reinterpret_cast<const char *>(text),
+                              static_cast<std::size_t>(sqlite3_value_bytes(value)))
                 : std::string();
   }
 
@@ -97,8 +98,8 @@ namespace {
       if (any_null(argc, argv)) return sqlite3_result_null(context);
       json question = {{"type", "noul"}, {"instructions", state_or_text(argv[1])}};
       if (argc > 2) question["criteria"] = parse_json_argument(argv[2], "noul criteria");
-      sqlite3_result_double(context,
-                            single_answer(argv[0], std::move(question)).at("noul").get<double>());
+      const json answer = single_answer(argv[0], std::move(question));
+      sqlite3_result_double(context, answer.at("noul").get<double>());
     });
   }
 
@@ -108,8 +109,8 @@ namespace {
       json question = {{"type", "choice"},
                        {"instructions", state_or_text(argv[1])},
                        {"criteria", parse_json_argument(argv[2], "choice criteria")}};
-      result_text(context,
-                  single_answer(argv[0], std::move(question)).at("choice").get<std::string>());
+      const json answer = single_answer(argv[0], std::move(question));
+      result_text(context, answer.at("choice").get<std::string>());
     });
   }
 
@@ -119,8 +120,8 @@ namespace {
       json question = {{"type", "score"},
                        {"instructions", state_or_text(argv[1])},
                        {"criteria", parse_json_argument(argv[2], "score criteria")}};
-      sqlite3_result_double(context,
-                            single_answer(argv[0], std::move(question)).at("score").get<double>());
+      const json answer = single_answer(argv[0], std::move(question));
+      sqlite3_result_double(context, answer.at("score").get<double>());
     });
   }
 
@@ -164,6 +165,7 @@ extern "C"
     sqlite3_decisionquery_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi) {
   SQLITE_EXTENSION_INIT2(pApi);
   (void)pzErrMsg;
+  // cppcheck-suppress badBitmaskCheck ; subtype_flags() is 0 only on older SQLite.
   const int inference = SQLITE_UTF8 | SQLITE_DETERMINISTIC | subtype_flags();
   struct entry {
     const char *name;
@@ -180,6 +182,7 @@ extern "C"
       {"noul", 3, inference, noul},
       {"choice", 3, inference, choice},
       {"score", 3, inference, score},
+      // cppcheck-suppress badBitmaskCheck ; result_subtype_flag() is 0 only on older SQLite.
       {"decide", 2, inference | result_subtype_flag(), decide_answers},
   };
   for (const auto &item : entries) {
