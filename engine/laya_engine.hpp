@@ -20,6 +20,15 @@
 #  define SQLAYA_CUDA_DEFAULT 0
 #endif
 
+// Each target defines its own version macro; the shared engine belongs to both.
+#if defined(SQLITE_LAYA_VERSION)
+#define SQLAYA_UA_VERSION SQLITE_LAYA_VERSION
+#elif defined(PGLAYA_VERSION)
+#define SQLAYA_UA_VERSION PGLAYA_VERSION
+#else
+#define SQLAYA_UA_VERSION "dev"
+#endif
+
 namespace sqlaya {
   using json = laya::json;
 
@@ -134,7 +143,7 @@ namespace sqlaya {
       cli.set_connection_timeout(30, 0);
       // Content-Type is supplied by Post()'s final argument; setting it here too
       // sends the header twice and the server parses the body as a string.
-      httplib::Headers headers{{"User-Agent", "sqlaya/" SQLITE_LAYA_VERSION}};
+      httplib::Headers headers{{"User-Agent", "sqlaya/" SQLAYA_UA_VERSION}};
       if (!key.empty()) headers.emplace("Authorization", "Bearer " + key);
       auto res = cli.Post(path.c_str(), headers, body.dump(), "application/json");
       if (!res)
