@@ -30,6 +30,21 @@ SELECT choice('{"subject": "hello"}'::jsonb, 'question', '["a", "b"]');
 SELECT score('state', 'question', '["low", "high"]');
 SELECT decide('state', '{"q": {"type": "noul", "instructions": "question"}}');
 
--- Settings are validated and reserved under the decide prefix.
+-- Settings are validated and reserved under the decision_query prefix.
 SET decision_query.options = '{"cuda": false}';
 SHOW decision_query.options;
+-- A misspelt setting under the extension's prefix is rejected on PostgreSQL 15
+-- and later, the release that introduced reserved prefixes. Earlier releases
+-- can only warn about placeholders that already exist when the library loads.
+DO $$
+DECLARE
+  rejected boolean := false;
+BEGIN
+  BEGIN
+    PERFORM set_config('decision_query.bogus', '1', true);
+  EXCEPTION WHEN invalid_name THEN
+    rejected := true;
+  END;
+  ASSERT rejected = (current_setting('server_version_num')::int >= 150000),
+    'a misspelt decision_query setting was accepted as a placeholder';
+END $$;

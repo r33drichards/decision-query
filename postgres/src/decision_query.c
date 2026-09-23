@@ -46,9 +46,9 @@ void _PG_init(void) {
       &api_key_file_setting, "", PGC_SUSET, GUC_SUPERUSER_ONLY, NULL, NULL,
       NULL);
 #if PG_VERSION_NUM >= 150000
-  MarkGUCPrefixReserved("decide");
+  MarkGUCPrefixReserved("decision_query");
 #else
-  EmitWarningsOnPlaceholders("decide");
+  EmitWarningsOnPlaceholders("decision_query");
 #endif
 }
 

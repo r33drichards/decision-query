@@ -45,7 +45,7 @@ jobs:
         run: |
           echo "::error::Integration tests have not run. Add the 'integration-test' label to this PR."
           exit 1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: ${{ steps.gate.outputs.skip != 'true' }}
         with:
           submodules: recursive
