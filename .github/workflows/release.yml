@@ -1,0 +1,146 @@
+# Releases when a pull request labelled release:major, release:minor or
+# release:patch merges into main.
+#
+# 1. release-drafter resolves the next version from the labels on the pull
+#    requests merged since the last release (.github/release-drafter.yml) and
+#    writes the notes into a draft release.
+# 2. The build jobs stamp that version into VERSION (main is protected, so it
+#    is not committed back) and build the SQLite module, static library,
+#    Python wheel and PostgreSQL extension.
+# 3. The artifacts are attached to the draft, which is then published. That
+#    creates the v<version> tag on the merge commit.
+#
+# pull_request_target gives the token write access even for pull requests
+# from forks. It is safe here because nothing runs until the pull request has
+# merged, and the checkout is main's merge commit, not the fork's branch.
+name: release
+on:
+  pull_request_target:
+    types: [closed]
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  draft:
+    if: >-
+      github.event.pull_request.merged &&
+      (contains(github.event.pull_request.labels.*.name, 'release:major') ||
+       contains(github.event.pull_request.labels.*.name, 'release:minor') ||
+       contains(github.event.pull_request.labels.*.name, 'release:patch'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    outputs:
+      version: ${{ steps.drafter.outputs.resolved_version }}
+      tag: ${{ steps.drafter.outputs.tag_name }}
+    steps:
+      - id: drafter
+        uses: release-drafter/release-drafter@v7
+        with:
+          config-name: release-drafter.yml
+          commitish: ${{ github.event.pull_request.merge_commit_sha }}
+
+  sqlite:
+    needs: draft
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.draft.outputs.version }}
+      # Portable x86-64-v3 (AVX2/FMA/F16C) code instead of the build machine's CPU.
+      CMAKE_FLAGS: -DGGML_NATIVE=OFF -DDQ_CUDA=OFF
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          submodules: recursive
+      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libicu-dev nlohmann-json3-dev libsqlite3-dev libssl-dev gettext-base
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install wheel
+      - name: Stamp the version
+        run: |
+          echo "$VERSION" > VERSION
+          make python-versions
+      - run: make loadable-release static-release python-release
+      - name: Check the built module reports the release version
+        run: |
+          python3 - <<'PY'
+          import os, sqlite3
+          db = sqlite3.connect(":memory:")
+          db.enable_load_extension(True)
+          db.load_extension("./dist/release/decision_query")
+          got = db.execute("select dq_version()").fetchone()[0]
+          assert got == "v" + os.environ["VERSION"], got
+          print(got)
+          PY
+      - name: Package
+        run: |
+          name="decision-query-v$VERSION-sqlite-linux-x86_64"
+          mkdir -p "out/$name"
+          cp dist/release/decision_query.so dist/release/libdecision_query.a dist/release/decision_query.h "out/$name/"
+          tar -C out -czf "$name.tar.gz" "$name"
+          cp dist/release/wheels/*.whl .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-sqlite
+          path: |
+            decision-query-*.tar.gz
+            *.whl
+
+  postgres:
+    needs: draft
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        pg: [16]
+    env:
+      VERSION: ${{ needs.draft.outputs.version }}
+      CMAKE_FLAGS: -DGGML_NATIVE=OFF -DDQ_CUDA=OFF -DCMAKE_BUILD_TYPE=Release
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          submodules: recursive
+      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libicu-dev nlohmann-json3-dev libssl-dev postgresql-${{ matrix.pg }} postgresql-server-dev-${{ matrix.pg }}
+      - run: echo "$VERSION" > VERSION
+      - run: make postgres
+      - run: sudo make postgres-install
+      - run: make test-postgres
+      - name: Show the regression diff
+        if: failure()
+        run: cat build/postgres/regression.diffs || true
+      - name: Package
+        run: |
+          name="decision-query-v$VERSION-pg${{ matrix.pg }}-linux-x86_64"
+          mkdir -p "out/$name"
+          cp build/postgres/decision_query.so build/postgres/decision_query.control \
+            "build/postgres/decision_query--$VERSION.sql" "out/$name/"
+          tar -C out -czf "$name.tar.gz" "$name"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-pg${{ matrix.pg }}
+          path: decision-query-*.tar.gz
+
+  publish:
+    needs: [draft, sqlite, postgres]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ needs.draft.outputs.tag }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: assets
+      - run: sha256sum assets/* | sed 's|assets/||' > assets/SHA256SUMS
+      - run: gh release upload "$TAG" assets/* --clobber
+      - run: gh release edit "$TAG" --draft=false --latest

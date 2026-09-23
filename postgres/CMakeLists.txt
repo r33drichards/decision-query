@@ -25,12 +25,17 @@ if(DQ_MODEL_DIR)
   set(temp_config TEMP_CONFIG "${CMAKE_BINARY_DIR}/model.conf")
 endif()
 
+# The install script is kept unversioned and named for the version at build
+# time (the PGXN convention), so a release only has to set ../VERSION.
+configure_file(decision_query.sql
+  "${CMAKE_CURRENT_BINARY_DIR}/decision_query--${DQ_VERSION_TEXT}.sql" COPYONLY)
+
 add_postgresql_extension(decision_query
   TARGET pgdq
   VERSION ${DQ_VERSION_TEXT}
   COMMENT "Typed decisions as SQL functions"
   SOURCES src/decision_query.c src/bridge.cpp
-  SCRIPTS decision_query--${DQ_VERSION_TEXT}.sql
+  SCRIPTS "${CMAKE_CURRENT_BINARY_DIR}/decision_query--${DQ_VERSION_TEXT}.sql"
   REGRESS ${regress}
   ${temp_config})
 

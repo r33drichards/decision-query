@@ -186,6 +186,27 @@ on the lines a pull request changes and cppcheck over the tree;
 [`codeql.yml`](.github/workflows/codeql.yml) runs CodeQL; and the `cflite_*` workflows
 fuzz each pull request for ten minutes and main for an hour a day.
 
+## Releases
+
+Label a pull request `release:major`, `release:minor` or `release:patch` and merging it
+publishes a release. [Release Drafter](https://github.com/release-drafter/release-drafter)
+picks the next version from the highest label among the pull requests merged since the
+last release (unlabelled ones are listed but never release on their own) and writes the
+notes; [`release.yml`](.github/workflows/release.yml) then builds and attaches:
+
+| Asset | Contents |
+|---|---|
+| `decision-query-vX.Y.Z-sqlite-linux-x86_64.tar.gz` | `decision_query.so`, `libdecision_query.a`, `decision_query.h` |
+| `decision_query-X.Y.Z-py3-none-manylinux…whl` | Python package with the loadable module |
+| `decision-query-vX.Y.Z-pg16-linux-x86_64.tar.gz` | PostgreSQL 16 `decision_query.so`, `.control` and install script |
+| `SHA256SUMS` | Checksums of the above |
+
+Release binaries target x86-64-v3 (AVX2, FMA, F16C; Intel Haswell / AMD Excavator or
+newer) rather than the build machine's CPU. The tag carries the version: the release
+stamps it into `VERSION` for the build, and `VERSION` on `main` is not bumped. Add
+`skip-changelog` to leave a pull request out of the notes. The labels are defined in
+[`.github/labels.yml`](.github/labels.yml).
+
 ## Limitations
 
 - Scalar functions run one forward pass per row. Use `decide()` to evaluate several

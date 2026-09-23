@@ -1,0 +1,33 @@
+# Release Drafter (https://github.com/release-drafter/release-drafter) builds the
+# release notes and the next version from the labels on merged pull requests.
+# .github/workflows/release.yml runs it when a pull request carrying one of the
+# release:* labels merges; the highest label since the last release wins.
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+categories:
+  - title: 'Breaking changes'
+    semver-increment: major
+    exclusive: true
+    when:
+      label: 'release:major'
+  - title: 'Features'
+    semver-increment: minor
+    exclusive: true
+    when:
+      label: 'release:minor'
+  - title: 'Fixes'
+    semver-increment: patch
+    exclusive: true
+    when:
+      label: 'release:patch'
+  # Unlabelled pull requests merged since the last release are listed here and
+  # count as a patch; they never trigger a release on their own.
+  - title: 'Other changes'
+  - type: 'pre-exclude'
+    when:
+      label: 'skip-changelog'
+change-template: '- $TITLE (#$NUMBER) $AUTHORS'
+# Add # and @ to prevent mentions. Add ` to prevent code blocks.
+change-title-escapes: '\<*_&'
+template: |
+  $CHANGES

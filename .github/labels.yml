@@ -1,0 +1,16 @@
+# Labels managed by .github/workflows/labels.yml (crazy-max/ghaction-github-labeler).
+# Labels not listed here are left alone (skip-delete).
+- name: 'release:major'
+  color: '#b60205'
+  description: 'Merging releases a new major version (breaking change)'
+- name: 'release:minor'
+  color: '#0e8a16'
+  description: 'Merging releases a new minor version (new feature)'
+- name: 'release:patch'
+  color: '#1d76db'
+  description: 'Merging releases a new patch version (fix)'
+- name: 'skip-changelog'
+  color: '#cfd3d7'
+  description: 'Leave this pull request out of the release notes'
+- name: 'integration-test'
+  description: 'Runs the integration-local and integration-remote workflows'

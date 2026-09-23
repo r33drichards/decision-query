@@ -52,4 +52,4 @@ jobs:
           path: |
             build/postgres/decision_query.so
             build/postgres/decision_query.control
-            postgres/decision_query--*.sql
+            build/postgres/decision_query--*.sql
