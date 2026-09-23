@@ -45,3 +45,15 @@ target_compile_definitions(sqlaya-engine INTERFACE
   SQLAYA_CUDA_DEFAULT=$<BOOL:${SQLAYA_CUDA}>
   SQLAYA_METAL_DEFAULT=$<BOOL:${SQLAYA_METAL}>)
 target_link_libraries(sqlaya-engine INTERFACE laya)
+
+# The HTTP decision backend (Jev / reflex / djev) reuses laya.cpp's vendored client.
+target_include_directories(sqlaya-engine INTERFACE
+  "${CMAKE_CURRENT_SOURCE_DIR}/../laya.cpp/third_party/cpp-httplib")
+find_package(OpenSSL QUIET)
+if(OpenSSL_FOUND)
+  target_compile_definitions(sqlaya-engine INTERFACE CPPHTTPLIB_OPENSSL_SUPPORT)
+  target_link_libraries(sqlaya-engine INTERFACE OpenSSL::SSL OpenSSL::Crypto)
+  message(STATUS "sqlaya: HTTPS decision endpoints enabled")
+else()
+  message(STATUS "sqlaya: OpenSSL not found; only http:// decision endpoints will work")
+endif()
