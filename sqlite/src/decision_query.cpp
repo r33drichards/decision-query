@@ -128,7 +128,7 @@ namespace {
   void decide_answers(sqlite3_context *context, int argc, sqlite3_value **argv) {
     guarded(context, [&] {
       if (any_null(argc, argv)) return sqlite3_result_null(context);
-      const json questions = parse_json_argument(argv[1], "laya questions");
+      const json questions = parse_json_argument(argv[1], "questions");
       if (!questions.is_object() || questions.empty())
         throw std::invalid_argument("questions must be a nonempty JSON object");
       result_text(context, engine::instance().answers(state_or_text(argv[0]), questions).dump());
