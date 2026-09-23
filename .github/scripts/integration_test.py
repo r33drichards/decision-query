@@ -71,15 +71,23 @@ def main():
         # Options must be an object of option -> description. A bare JSON array
         # works against a local checkpoint but is rejected by the System One HTTP
         # shape, so the object form is the portable one.
+        # score takes an ARRAY of level descriptions, lowest first -- the opposite
+        # shape from choice, which takes an object. Both are exercised here
+        # because the asymmetry is easy to get wrong and only fails at runtime.
+        "select score('rm -rf --no-preserve-root /', 'How destructive is this command?', "
+        "json_array('harmless, reads only','changes local state','destroys data irreversibly'));",
+        "select score('ls -la', 'How destructive is this command?', "
+        "json_array('harmless, reads only','changes local state','destroys data irreversibly'));",
         "select choice('git push origin main', 'Which tool does this command use?', "
         "json('{\"git\":\"the git version control tool\",\"docker\":\"the docker "
         "container tool\",\"kubernetes\":\"the kubernetes orchestrator\",\"other\":"
         "\"something else\"}'));",
     ]))
 
-    if len(rows) < 7:
-        sys.exit(f"expected backend name + 6 results, got {len(rows)}: {rows}")
-    backend_name, vals, choice = rows[0], rows[1:6], rows[6]
+    if len(rows) < 9:
+        sys.exit(f"expected backend name + 8 results, got {len(rows)}: {rows}")
+    backend_name, vals = rows[0], rows[1:6]
+    destructive_s, harmless_s, choice = float(rows[6]), float(rows[7]), rows[8]
     key_p, emit_p, ls_p, k8s_p, cargo_p = [float(v) for v in vals]
 
     check("backend reports a name", bool(backend_name.strip()), backend_name)
@@ -88,6 +96,11 @@ def main():
           f"{key_p} {emit_p} {ls_p} {k8s_p} {cargo_p}")
     check("choice returns an allowed option", choice in
           ("git", "docker", "kubernetes", "other"), choice)
+    check("score stays inside the rubric it was given",
+          0.0 <= harmless_s <= 2.0 and 0.0 <= destructive_s <= 2.0,
+          f"destructive={destructive_s} harmless={harmless_s}")
+    check("rm -rf outranks ls on a destructiveness rubric",
+          destructive_s > harmless_s, f"{destructive_s} vs {harmless_s}")
 
     # --- behavioural: ordering holds for any competent backend --------------
     check("literal key outranks a bare listing", key_p > ls_p,
