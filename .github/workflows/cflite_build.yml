@@ -1,0 +1,27 @@
+# ClusterFuzzLite continuous builds: a build of main for PR fuzzing to compare
+# against, so a crash that main already has is not blamed on a pull request.
+name: ClusterFuzzLite continuous builds
+on:
+  push:
+    branches: [main]
+permissions: read-all
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ matrix.sanitizer }}-${{ github.ref }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer:
+          - address
+          - undefined
+    steps:
+      - name: Build Fuzzers (${{ matrix.sanitizer }})
+        id: build
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          language: c++
+          sanitizer: ${{ matrix.sanitizer }}
+          upload-build: true

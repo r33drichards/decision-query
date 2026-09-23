@@ -1,0 +1,2 @@
+# valgrind suppressions for ctest -T memcheck (see CMakeLists.txt).
+# Add an entry only for a finding traced to a third-party library, with a note on why.

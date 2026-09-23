@@ -1,0 +1,4 @@
+language: c++
+# Builds and runs on Ubuntu 24.04 images, whose nlohmann-json and CMake meet
+# laya.cpp's minimums.
+base_os_version: ubuntu-24-04

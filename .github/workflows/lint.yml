@@ -1,0 +1,67 @@
+# clang-format and clang-tidy on the lines a pull request changes, through
+# cpp-linter-action, plus cppcheck over the whole first-party tree.
+name: lint
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: lint-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+env:
+  DEPS: cmake ninja-build libicu-dev nlohmann-json3-dev libsqlite3-dev libssl-dev postgresql-server-dev-16
+jobs:
+  cpp-linter:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: sudo apt-get update && sudo apt-get install -y $DEPS
+      # clang-tidy needs compile_commands.json and the generated headers,
+      # which configuring alone produces.
+      - run: >-
+          cmake -S . -B build -G Ninja -DDQ_POSTGRES=ON -DDQ_BUILD_TESTS=ON
+      - uses: cpp-linter/cpp-linter-action@v2
+        id: linter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          style: file
+          tidy-checks: ''
+          # Matches the clang on ubuntu-24.04, where the config was validated.
+          version: '18'
+          database: build
+          lines-changed-only: true
+          ignore: '.github|laya.cpp|build'
+          step-summary: true
+          thread-comments: ${{ github.event_name == 'pull_request' && 'update' }}
+      - name: Fail on findings
+        if: steps.linter.outputs.checks-failed > 0
+        run: exit 1
+
+  cppcheck:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: sudo apt-get update && sudo apt-get install -y $DEPS cppcheck
+      - run: >-
+          cmake -S . -B build -G Ninja -DDQ_POSTGRES=ON -DDQ_BUILD_TESTS=ON
+      # Suppressions follow cpp-best-practices/cmake_template's
+      # cmake/StaticAnalyzers.cmake; vendored and fetched code is excluded.
+      - run: >-
+          cppcheck --project=build/compile_commands.json
+          --enable=style,performance,warning,portability --inline-suppr
+          --suppress=cppcheckError --suppress=internalAstError --suppress=unmatchedSuppression
+          --suppress=passedByValue --suppress=syntaxError --suppress=preprocessorErrorDirective
+          --suppress=knownConditionTrueFalse
+          --suppress='*:*/laya.cpp/*' --suppress='*:*/_deps/*' --suppress='*:/usr/*'
+          -i laya.cpp -i build/_deps
+          --error-exitcode=2 --template=gcc

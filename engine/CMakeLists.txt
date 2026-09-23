@@ -45,9 +45,14 @@ target_compile_definitions(decision-query-engine INTERFACE
   DQ_CUDA_DEFAULT=$<BOOL:${DQ_CUDA}>
   DQ_METAL_DEFAULT=$<BOOL:${DQ_METAL}>)
 target_link_libraries(decision-query-engine INTERFACE laya)
+# Vendored headers are included as system headers so the warning set in
+# ../cmake/CompilerWarnings.cmake applies to this project's code only.
+target_include_directories(decision-query-engine SYSTEM INTERFACE
+  "${CMAKE_CURRENT_SOURCE_DIR}/../laya.cpp/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../laya.cpp/third_party/ggml/include")
 
 # The HTTP decision backend (Jev / reflex / djev) reuses laya.cpp's vendored client.
-target_include_directories(decision-query-engine INTERFACE
+target_include_directories(decision-query-engine SYSTEM INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/../laya.cpp/third_party/cpp-httplib")
 find_package(OpenSSL QUIET)
 if(OpenSSL_FOUND)

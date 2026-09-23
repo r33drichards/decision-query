@@ -42,3 +42,9 @@ add_library(decision-query-static STATIC src/decision_query.cpp)
 set_target_properties(decision-query-static PROPERTIES OUTPUT_NAME "decision_query")
 target_include_directories(decision-query-static PUBLIC "${CMAKE_CURRENT_BINARY_DIR}" "${SQLITE3EXT_INCLUDE_DIR}")
 target_link_libraries(decision-query-static PUBLIC decision-query-engine)
+
+# Warning set and sanitizers from the top-level build (see ../CMakeLists.txt).
+if(TARGET dq_options)
+  target_link_libraries(decision-query PRIVATE dq_options dq_warnings)
+  target_link_libraries(decision-query-static PRIVATE dq_options dq_warnings)
+endif()
