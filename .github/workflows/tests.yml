@@ -1,0 +1,91 @@
+# Native unit tests (tests/) under both compilers with warnings as errors,
+# under the sanitizers, and under valgrind. None of them need a checkpoint.
+name: tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+env:
+  DEPS: cmake ninja-build libicu-dev nlohmann-json3-dev libsqlite3-dev libssl-dev
+jobs:
+  unit:
+    name: unit (${{ matrix.compiler.cc }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - { cc: gcc, cxx: g++ }
+          - { cc: clang, cxx: clang++ }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: sudo apt-get update && sudo apt-get install -y $DEPS
+      - name: Configure
+        env:
+          CC: ${{ matrix.compiler.cc }}
+          CXX: ${{ matrix.compiler.cxx }}
+        run: >-
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DDQ_POSTGRES=OFF
+          -DDQ_BUILD_TESTS=ON -DDQ_WARNINGS_AS_ERRORS=ON
+      - run: cmake --build build --target decision-query dq_tests
+      - run: ctest --test-dir build -L unit --output-on-failure
+
+  sanitizers:
+    name: sanitizers (${{ matrix.name }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: address+undefined
+            flags: -DDQ_ENABLE_SANITIZER_ADDRESS=ON -DDQ_ENABLE_SANITIZER_UNDEFINED=ON
+          - name: thread
+            flags: -DDQ_ENABLE_SANITIZER_THREAD=ON
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: sudo apt-get update && sudo apt-get install -y $DEPS libclang-rt-18-dev
+      # Clang 18's sanitizer runtimes cannot map their shadow memory with the
+      # runner kernel's default ASLR entropy; lowering it is the usual workaround.
+      - run: sudo sysctl vm.mmap_rnd_bits=28
+      - name: Configure
+        env:
+          CC: clang
+          CXX: clang++
+        run: >-
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DDQ_POSTGRES=OFF
+          -DDQ_BUILD_TESTS=ON ${{ matrix.flags }}
+      - run: cmake --build build --target dq_tests
+      - run: ctest --test-dir build -L unit --output-on-failure
+        env:
+          ASAN_OPTIONS: detect_leaks=1:strict_string_checks=1:detect_stack_use_after_return=1
+          UBSAN_OPTIONS: print_stacktrace=1
+          TSAN_OPTIONS: second_deadlock_stack=1
+
+  valgrind:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: sudo apt-get update && sudo apt-get install -y $DEPS valgrind
+      - run: >-
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DDQ_POSTGRES=OFF
+          -DDQ_BUILD_TESTS=ON
+      - run: cmake --build build --target dq_tests
+      # valgrind runs with --error-exitcode=1 (see CMakeLists.txt), so any
+      # memory error or definite leak fails the test and the job.
+      - run: ctest --test-dir build -L unit -T memcheck --output-on-failure
+      - name: Show the valgrind logs
+        if: failure()
+        run: cat build/Testing/Temporary/MemoryChecker.*.log

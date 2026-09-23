@@ -32,6 +32,9 @@ Both modules provide `dq_load`, `dq_backend`, `dq_version`, `noul`,
 | [`laya.cpp/`](laya.cpp/) | Git submodule with the native runtime, tokenizers and the `laya-cli` tool. |
 | [`sqlite/`](sqlite/README.md) | SQLite loadable module, static library, Python wheel and tests. |
 | [`postgres/`](postgres/README.md) | PostgreSQL extension built from the [pg_extension](https://github.com/mkindahl/pg_extension) CMake template, with pg_regress tests. |
+| [`tests/`](tests/) | Native Catch2 unit tests for the engine, the HTTP backend and the SQLite functions; no checkpoint needed. |
+| [`fuzz/`](fuzz/) | libFuzzer targets with seed corpora, run in CI by [ClusterFuzzLite](.clusterfuzzlite/). |
+| [`cmake/`](cmake/) | Warning, sanitizer and libFuzzer modules vendored from [cpp-best-practices/cmake_template](https://github.com/cpp-best-practices/cmake_template). |
 
 The top-level `CMakeLists.txt` builds everything into one tree, so ggml and the laya
 runtime compile once. Each module directory also configures on its own.
@@ -165,6 +168,23 @@ DQ_MODEL_DIR=models/laya make cli test-loadable      # SQLite with checkpoint an
 DQ_MODEL_DIR=models/laya DQ_OPTIONS='{"cuda": false}' make postgres
 sudo make postgres-install && make test-postgres       # pg_regress, not as root
 ```
+
+The native unit tests run under the sanitizers and valgrind as well, and the fuzz
+targets need clang with its compiler-rt (`libclang-rt-18-dev` on Ubuntu):
+
+```sh
+make test-native                                       # tests/ with Catch2
+CMAKE_FLAGS='-DDQ_ENABLE_SANITIZER_ADDRESS=ON -DDQ_ENABLE_SANITIZER_UNDEFINED=ON' \
+  CC=clang CXX=clang++ make test-native                # ASan + UBSan; also _THREAD, _MEMORY
+make memcheck                                          # the same tests under valgrind
+make fuzz FUZZ_RUNTIME=300                             # each fuzz target for five minutes
+```
+
+CI runs these in [`tests.yml`](.github/workflows/tests.yml) with `-DDQ_WARNINGS_AS_ERRORS=ON`;
+[`lint.yml`](.github/workflows/lint.yml) runs clang-format and clang-tidy (`.clang-tidy`)
+on the lines a pull request changes and cppcheck over the tree;
+[`codeql.yml`](.github/workflows/codeql.yml) runs CodeQL; and the `cflite_*` workflows
+fuzz each pull request for ten minutes and main for an hour a day.
 
 ## Limitations
 

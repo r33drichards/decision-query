@@ -1,0 +1,50 @@
+# GitHub's CodeQL starter workflow (actions/starter-workflows,
+# code-scanning/codeql.yml) with a manual C++ build. The vendored laya.cpp
+# and ggml libraries are built before CodeQL starts tracing, so only this
+# repository's code is extracted and analysed.
+name: codeql
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '17 4 * * 1'
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-24.04
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+          - language: c-cpp
+            build-mode: manual
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build the vendored dependencies untraced
+        if: matrix.build-mode == 'manual'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build libicu-dev nlohmann-json3-dev libsqlite3-dev libssl-dev postgresql-server-dev-16
+          cmake -S . -B build -G Ninja -DDQ_POSTGRES=ON -DDQ_BUILD_TESTS=ON
+          cmake --build build --target laya Catch2WithMain
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+      - name: Build
+        if: matrix.build-mode == 'manual'
+        run: cmake --build build --target decision-query decision-query-static pgdq dq_tests
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"

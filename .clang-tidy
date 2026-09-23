@@ -1,0 +1,45 @@
+---
+# Based on https://github.com/cpp-best-practices/cmake_template/blob/main/.clang-tidy
+# (Unlicense). The first block of exclusions is the template's own; the second
+# covers checks that contradict this repository's established style or that
+# fire on every use of the SQLite and PostgreSQL C APIs.
+Checks: "*,
+        -abseil-*,
+        -altera-*,
+        -android-*,
+        -fuchsia-*,
+        -google-*,
+        -llvm*,
+        -modernize-use-trailing-return-type,
+        -zircon-*,
+        -readability-else-after-return,
+        -readability-static-accessed-through-instance,
+        -readability-avoid-const-params-in-decls,
+        -cppcoreguidelines-non-private-member-variables-in-classes,
+        -misc-non-private-member-variables-in-classes,
+        -misc-no-recursion,
+        -misc-use-anonymous-namespace,
+        -misc-use-internal-linkage,
+
+        -readability-braces-around-statements,
+        -hicpp-braces-around-statements,
+        -readability-implicit-bool-conversion,
+        -readability-avoid-return-with-void-value,
+        -readability-identifier-length,
+        -readability-magic-numbers,
+        -cppcoreguidelines-avoid-magic-numbers,
+        -cppcoreguidelines-macro-usage,
+        -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+        -cppcoreguidelines-pro-type-reinterpret-cast,
+        -hicpp-signed-bitwise,
+        -misc-include-cleaner
+"
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*/(engine|sqlite|postgres)/.*'
+FormatStyle:     none
+
+CheckOptions:
+  - key: readability-identifier-length.IgnoredVariableNames
+    value: 'x|y|z'
+  - key: readability-identifier-length.IgnoredParameterNames
+    value: 'x|y|z'

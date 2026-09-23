@@ -1,0 +1,43 @@
+# ClusterFuzzLite PR fuzzing, from the default configuration in
+# https://google.github.io/clusterfuzzlite/running-clusterfuzzlite/github-actions/
+# Builds .clusterfuzzlite/ and fuzzes the targets in fuzz/ for ten minutes per
+# sanitizer; a crash fails the check and is uploaded as an artifact.
+name: ClusterFuzzLite PR fuzzing
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions: read-all
+jobs:
+  PR:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ matrix.sanitizer }}-${{ github.ref }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer:
+          - address
+          - undefined
+    steps:
+      # build_fuzzers reads .clusterfuzzlite/project.yaml from the workspace to
+      # pick the Ubuntu 24.04 images; without a checkout it falls back to 20.04,
+      # whose glibc cannot run the fuzzers built on 24.04.
+      - uses: actions/checkout@v4
+      - name: Build Fuzzers (${{ matrix.sanitizer }})
+        id: build
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          language: c++
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          sanitizer: ${{ matrix.sanitizer }}
+      - name: Run Fuzzers (${{ matrix.sanitizer }})
+        id: run
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: 600
+          mode: 'code-change'
+          sanitizer: ${{ matrix.sanitizer }}
+          output-sarif: true
