@@ -1,6 +1,6 @@
-# laya for SQLite
+# decision-query for SQLite
 
-The SQLite loadable module `laya` answers Laya typed decisions from SQL. It is built
+The SQLite loadable module `decision_query` answers Laya typed decisions from SQL. It is built
 from the shared engine in `engine/` and the vendored laya.cpp runtime.
 
 ```sql
@@ -14,7 +14,7 @@ select id, choice(body, 'Which department should handle this?',
                        json_array('billing', 'technical', 'sales')) as department
   from tickets;
 
-select id, json_extract(laya(body, '{"urgency": {"type": "score",
+select id, json_extract(decide(body, '{"urgency": {"type": "score",
         "instructions": "How urgent is the request?",
         "criteria": ["not urgent", "soon", "immediate"]}}'), '$.urgency.score') as urgency
   from tickets;
@@ -28,8 +28,8 @@ otherwise. Every SQLite connection in the process shares it.
 From the repository root (see the [root README](../README.md) for prerequisites):
 
 ```sh
-make loadable          # dist/debug/decision_query.so (or laya.dylib)
-make static            # dist/debug/libdecision_query.a and decision-query.h
+make loadable          # dist/debug/decision_query.so (or decision_query.dylib)
+make static            # dist/debug/libdecision_query.a and decision_query.h
 make loadable-release  # optimized build in dist/release
 ```
 
@@ -49,7 +49,7 @@ library holds only the extension code; embedding it also requires linking the
 | `noul(state, instructions)`, `noul(state, instructions, criteria)` | REAL | Probability that the statement holds. Optional criteria: `{"true": "...", "false": "..."}` descriptions. |
 | `choice(state, instructions, criteria)` | TEXT | The selected option. Criteria: a JSON array of names or a JSON object mapping names to descriptions. |
 | `score(state, instructions, criteria)` | REAL | Expected ordinal score. Criteria: a JSON array of level descriptions, scored 0 through n-1. |
-| `laya(state, questions)` | TEXT (JSON) | The full answers object for a questions object, evaluated in one batch. |
+| `decide(state, questions)` | TEXT (JSON) | The full answers object for a questions object, evaluated in one batch. |
 
 `options` is the JSON object described in the [root README](../README.md#load-options):
 

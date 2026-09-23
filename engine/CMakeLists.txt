@@ -1,4 +1,4 @@
-# Shared configuration for every sqlaya module: the version, the vendored
+# Shared configuration for every decision-query module: the version, the vendored
 # laya.cpp runtime built as static position-independent archives, the CUDA
 # option, and the `decision-query-engine` interface target that modules link.
 cmake_minimum_required(VERSION 3.24)
@@ -8,10 +8,10 @@ endif()
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION" DQ_VERSION_TEXT)
 string(STRIP "${DQ_VERSION_TEXT}" DQ_VERSION_TEXT)
-string(REGEX REPLACE "-.*$" "" SQLAYA_VERSION_NUMBER "${DQ_VERSION_TEXT}")
+string(REGEX REPLACE "-.*$" "" DQ_VERSION_NUMBER "${DQ_VERSION_TEXT}")
 if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   set(DQ_VERSION_TEXT "${DQ_VERSION_TEXT}" PARENT_SCOPE)
-  set(SQLAYA_VERSION_NUMBER "${SQLAYA_VERSION_NUMBER}" PARENT_SCOPE)
+  set(DQ_VERSION_NUMBER "${DQ_VERSION_NUMBER}" PARENT_SCOPE)
 endif()
 
 # Modules fold the runtime and ggml into one shared object.
@@ -53,7 +53,7 @@ find_package(OpenSSL QUIET)
 if(OpenSSL_FOUND)
   target_compile_definitions(decision-query-engine INTERFACE CPPHTTPLIB_OPENSSL_SUPPORT)
   target_link_libraries(decision-query-engine INTERFACE OpenSSL::SSL OpenSSL::Crypto)
-  message(STATUS "sqlaya: HTTPS decision endpoints enabled")
+  message(STATUS "decision-query: HTTPS decision endpoints enabled")
 else()
-  message(STATUS "sqlaya: OpenSSL not found; only http:// decision endpoints will work")
+  message(STATUS "decision-query: OpenSSL not found; only http:// decision endpoints will work")
 endif()

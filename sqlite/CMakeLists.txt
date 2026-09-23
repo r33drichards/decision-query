@@ -1,4 +1,4 @@
-# SQLite loadable module (laya.so) and static library (libdecision_query.a).
+# SQLite loadable module (decision_query.so) and static library (libdecision_query.a).
 cmake_minimum_required(VERSION 3.24)
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   project(decision-query-sqlite LANGUAGES C CXX)

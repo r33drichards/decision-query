@@ -1,10 +1,10 @@
-# The `sqlite-laya` Python package
+# The `decision-query` Python package
 
-`sqlite-laya` packages the `laya` SQLite extension for Python applications using the
+`decision-query` packages the `decision_query` SQLite extension for Python applications using the
 builtin [`sqlite3`](https://docs.python.org/3/library/sqlite3.html) module.
 
 ```
-pip install sqlite-laya
+pip install decision-query
 ```
 
 ## Usage
