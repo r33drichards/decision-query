@@ -94,12 +94,12 @@ namespace dq {
   // editor-added newline does not end up inside the Authorization header.
   inline std::string read_key_file(const std::string &path) {
     std::ifstream in(path);
-    if (!in) throw std::runtime_error("Cannot read laya key file: " + path);
+    if (!in) throw std::runtime_error("Cannot read key file: " + path);
     std::string key((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
     while (!key.empty() && (key.back() == '\n' || key.back() == '\r' ||
                             key.back() == ' ' || key.back() == '\t'))
       key.pop_back();
-    if (key.empty()) throw std::runtime_error("laya key file is empty: " + path);
+    if (key.empty()) throw std::runtime_error("key file is empty: " + path);
     return key;
   }
 

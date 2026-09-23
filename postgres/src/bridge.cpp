@@ -40,7 +40,7 @@ int guarded(char **error, Body &&body) {
   } catch (const std::exception &e) {
     *error = copy(e.what());
   } catch (...) {
-    *error = copy("Unknown Laya error");
+    *error = copy("Unknown error");
   }
   return 1;
 }
@@ -59,7 +59,7 @@ extern "C" int pgdq_evaluate(const pgdq_request *request,
       const json questions = parse(request->questions, "laya questions");
       if (!questions.is_object() || questions.empty())
         throw std::invalid_argument(
-            "laya questions must be a nonempty JSON object");
+            "questions must be a nonempty JSON object");
       response->text =
           copy(engine.answers(state, questions, model_dir, options).dump());
       return;

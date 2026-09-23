@@ -1,15 +1,15 @@
 -- Behaviour that does not need a checkpoint.
 -- Make sure nothing loads lazily during this test.
-SET decision_query.model_dir = '/nonexistent/decide';
+SET decision_query.model_dir = '/nonexistent/checkpoint';
 
 SELECT dq_version() LIKE 'v%' AS versioned;
 SELECT dq_backend() IS NULL AS unloaded;
 
 -- Loading errors leave the session usable.
-SELECT dq_load('/nonexistent/decide');
-SELECT dq_load('/nonexistent/decide', '{"gpu": true}');
-SELECT dq_load('/nonexistent/decide', '{"variant": "french"}');
-SELECT dq_load('/nonexistent/decide', '{"variant": "multilingual"}');
+SELECT dq_load('/nonexistent/checkpoint');
+SELECT dq_load('/nonexistent/checkpoint', '{"gpu": true}');
+SELECT dq_load('/nonexistent/checkpoint', '{"variant": "french"}');
+SELECT dq_load('/nonexistent/checkpoint', '{"variant": "multilingual"}');
 SELECT dq_backend() IS NULL AS still_unloaded;
 
 -- Strict functions return NULL for NULL arguments without running the model.

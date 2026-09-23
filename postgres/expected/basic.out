@@ -1,6 +1,6 @@
 -- Behaviour that does not need a checkpoint.
 -- Make sure nothing loads lazily during this test.
-SET decision_query.model_dir = '/nonexistent/decide';
+SET decision_query.model_dir = '/nonexistent/checkpoint';
 SELECT dq_version() LIKE 'v%' AS versioned;
  versioned 
 -----------
@@ -14,14 +14,14 @@ SELECT dq_backend() IS NULL AS unloaded;
 (1 row)
 
 -- Loading errors leave the session usable.
-SELECT dq_load('/nonexistent/decide');
-ERROR:  Not a checkpoint directory: /nonexistent/decide
-SELECT dq_load('/nonexistent/decide', '{"gpu": true}');
-ERROR:  Unknown decide option: gpu
-SELECT dq_load('/nonexistent/decide', '{"variant": "french"}');
+SELECT dq_load('/nonexistent/checkpoint');
+ERROR:  Not a checkpoint directory: /nonexistent/checkpoint
+SELECT dq_load('/nonexistent/checkpoint', '{"gpu": true}');
+ERROR:  Unknown option: gpu
+SELECT dq_load('/nonexistent/checkpoint', '{"variant": "french"}');
 ERROR:  Unknown model variant: french
-SELECT dq_load('/nonexistent/decide', '{"variant": "multilingual"}');
-ERROR:  Not a checkpoint directory: /nonexistent/decide/multilingual
+SELECT dq_load('/nonexistent/checkpoint', '{"variant": "multilingual"}');
+ERROR:  Not a checkpoint directory: /nonexistent/checkpoint/multilingual
 SELECT dq_backend() IS NULL AS still_unloaded;
  still_unloaded 
 ----------------
@@ -67,18 +67,18 @@ SELECT decide('state', NULL) IS NULL AS answers_null;
 
 -- Request validation happens before any model is needed.
 SELECT decide('state', '{}');
-ERROR:  decide questions must be a nonempty JSON object
+ERROR:  questions must be a nonempty JSON object
 SELECT decide('state', '[1]');
-ERROR:  decide questions must be a nonempty JSON object
+ERROR:  questions must be a nonempty JSON object
 -- Without a resident model, inference reports how to load one.
 SELECT noul('state', 'question');
-ERROR:  No Laya model loaded; call dq_load(dir) or set LAYA_MODEL_DIR
+ERROR:  No decision backend loaded; call dq_load(dir_or_url) or set DQ_MODEL_DIR
 SELECT choice('{"subject": "hello"}'::jsonb, 'question', '["a", "b"]');
-ERROR:  No Laya model loaded; call dq_load(dir) or set LAYA_MODEL_DIR
+ERROR:  No decision backend loaded; call dq_load(dir_or_url) or set DQ_MODEL_DIR
 SELECT score('state', 'question', '["low", "high"]');
-ERROR:  No Laya model loaded; call dq_load(dir) or set LAYA_MODEL_DIR
+ERROR:  No decision backend loaded; call dq_load(dir_or_url) or set DQ_MODEL_DIR
 SELECT decide('state', '{"q": {"type": "noul", "instructions": "question"}}');
-ERROR:  No Laya model loaded; call dq_load(dir) or set LAYA_MODEL_DIR
+ERROR:  No decision backend loaded; call dq_load(dir_or_url) or set DQ_MODEL_DIR
 -- Settings are validated and reserved under the decide prefix.
 SET decision_query.options = '{"cuda": false}';
 SHOW decision_query.options;

@@ -26,7 +26,7 @@ else:
   raise Exception("unsupported platform")
 
 setup(
-    name="sqlite-laya",
+    name="decision-query",
     description="SQLite extension for querying data with Laya typed decisions",
     long_description="SQLite extension for querying data with Laya typed decisions",
     long_description_content_type="text/markdown",

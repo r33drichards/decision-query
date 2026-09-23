@@ -52,7 +52,7 @@ namespace {
     } catch (const std::exception &e) {
       sqlite3_result_error(context, e.what(), -1);
     } catch (...) {
-      sqlite3_result_error(context, "Unknown Laya error", -1);
+      sqlite3_result_error(context, "Unknown error", -1);
     }
   }
 
@@ -129,7 +129,7 @@ namespace {
       if (any_null(argc, argv)) return sqlite3_result_null(context);
       const json questions = parse_json_argument(argv[1], "laya questions");
       if (!questions.is_object() || questions.empty())
-        throw std::invalid_argument("laya questions must be a nonempty JSON object");
+        throw std::invalid_argument("questions must be a nonempty JSON object");
       result_text(context, engine::instance().answers(state_or_text(argv[0]), questions).dump());
 #ifdef SQLITE_RESULT_SUBTYPE
       sqlite3_result_subtype(context, JSON_SUBTYPE);
