@@ -21,15 +21,15 @@ jobs:
           python-version: "3.12"
       - run: pip install wheel
       - run: make python
-      - run: pip install --find-links dist/debug/wheels sqlite_laya
+      - run: pip install --find-links dist/debug/wheels decision_query
       - run: make test-python
       - uses: actions/upload-artifact@v4
         with:
-          name: sqlaya-linux-x86_64
+          name: decision-query-linux-x86_64
           path: |
-            dist/debug/laya.so
-            dist/debug/libsqlite_laya.a
-            dist/debug/sqlaya.h
+            dist/debug/decision_query.so
+            dist/debug/libdecision_query.a
+            dist/debug/decision_query.h
             dist/debug/wheels/*.whl
   postgres-linux-x86_64:
     runs-on: ubuntu-latest
@@ -45,6 +45,6 @@ jobs:
         with:
           name: pgdq-linux-x86_64
           path: |
-            build/postgres/laya.so
-            build/postgres/laya.control
-            postgres/laya--*.sql
+            build/postgres/decision_query.so
+            build/postgres/decision_query.control
+            postgres/decision_query--*.sql

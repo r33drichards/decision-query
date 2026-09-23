@@ -22,7 +22,7 @@ SELECT id FROM tickets WHERE noul(body, 'Does the customer request a refund?') >
 ```
 
 Both modules provide `dq_load`, `dq_backend`, `dq_version`, `noul`,
-`choice`, `score` and `laya()`, which returns the full answers object as JSON.
+`choice`, `score` and `decide()`, which returns the full answers object as JSON.
 
 ## Layout
 
@@ -89,7 +89,7 @@ subdirectory named after the variant, matching the laya.cpp layout.
 When no model is resident, the first inference call loads one from `DQ_MODEL_DIR` and
 `DQ_OPTIONS` in the environment (PostgreSQL consults its `decision_query.model_dir` and
 `decision_query.options` settings first). If nothing is found the call fails with
-`No Laya model loaded; call dq_load(dir) or set DQ_MODEL_DIR`.
+`No decision backend loaded; call dq_load(dir_or_url) or set DQ_MODEL_DIR`.
 
 ## Decision backends
 
@@ -158,7 +158,7 @@ sudo make postgres-install && make test-postgres       # pg_regress, not as root
 
 ## Limitations
 
-- Scalar functions run one forward pass per row. Use `laya()` to evaluate several
+- Scalar functions run one forward pass per row. Use `decide()` to evaluate several
   questions about the same row in one batch. Cross-row batching is not available.
 - Strict FP32 on the CPU is slow for a 28-layer encoder: about a second per question on a
   few cores. Use the CUDA build for table-scale workloads.

@@ -157,7 +157,7 @@ where scoring every row would take an hour.
 ## 7. Two questions in one pass
 
 Knowing a line holds a secret is more useful when you also know *whose* secret it
-is. `laya()` evaluates several questions about the same row in a single forward
+is. `decide()` evaluates several questions about the same row in a single forward
 pass — so asking "is this a credential?" **and** "which vendor issued it?" costs
 the same as asking either one alone.
 
@@ -271,7 +271,7 @@ sqlite>
 
 so secrets detection is not great in baseline laya, and neither was categorization. 
 
-`laya()` also returns per-category probabilities, so you can see how confident the
+`decide()` also returns per-category probabilities, so you can see how confident the
 choice was rather than just taking the label:
 
 ```sql

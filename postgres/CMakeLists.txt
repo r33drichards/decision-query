@@ -28,7 +28,7 @@ endif()
 add_postgresql_extension(decision_query
   TARGET pgdq
   VERSION ${DQ_VERSION_TEXT}
-  COMMENT "Laya typed decisions as SQL functions"
+  COMMENT "Typed decisions as SQL functions"
   SOURCES src/decision_query.c src/bridge.cpp
   SCRIPTS decision_query--${DQ_VERSION_TEXT}.sql
   REGRESS ${regress}

@@ -57,7 +57,7 @@ library holds only the extension code; embedding it also requires linking the
 select dq_load('models/laya', json_object('variant', 'multilingual', 'tensor_core', 1, 'flash', 1));
 ```
 
-`questions` for `laya()` uses the laya.cpp request schema: an object of question ids, each
+`questions` for `decide()` uses the laya.cpp request schema: an object of question ids, each
 with `type` (`choice`, `score` or `noul`), `instructions`, and `criteria`. The result is the
 `answers` object from laya.cpp, including `confidence`, `probabilities` and `action`
 metadata, and carries SQLite's JSON subtype so `json_extract` and `json_object` nest it
@@ -77,7 +77,7 @@ Argument rules:
 The first inference call without a resident model loads one from the environment:
 `DQ_MODEL_DIR` (default `models/laya`, relative to the working directory) and
 `DQ_OPTIONS` (the same JSON as the `dq_load` options). If that directory does not exist
-the call fails with `No Laya model loaded; call dq_load(dir) or set DQ_MODEL_DIR`.
+the call fails with `No decision backend loaded; call dq_load(dir_or_url) or set DQ_MODEL_DIR`.
 
 ## Python
 
@@ -102,6 +102,6 @@ scans, and compares every public number against `laya-cli` output within 0.0001.
 
 - One resident model per process; `dq_load` replaces it. Calls are serialized across
   connections and threads, as the laya runtime requires.
-- Scalar functions run one forward pass per row. Use `laya()` to evaluate several
+- Scalar functions run one forward pass per row. Use `decide()` to evaluate several
   questions about the same row in one batch. Cross-row batching is not available.
 - The WebAssembly and Windows targets of the original extension template are not supported.

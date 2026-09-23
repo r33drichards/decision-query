@@ -73,7 +73,7 @@ workers. `dq_load` is `VOLATILE` and `PARALLEL UNSAFE`.
 Both are user-settable, so they work in `postgresql.conf`, `ALTER DATABASE ... SET`,
 `ALTER ROLE ... SET` or a plain `SET`. When no model is resident and the directory does
 not exist, inference fails with
-`No Laya model loaded; call dq_load(dir) or set DQ_MODEL_DIR`.
+`No decision backend loaded; call dq_load(dir_or_url) or set DQ_MODEL_DIR`.
 
 ## Tests
 
@@ -99,7 +99,7 @@ same on every backend. Update expected files after intentional changes with
   connections.
 - Model memory lives outside PostgreSQL's memory contexts and stays allocated until the
   backend exits.
-- Scalar functions run one forward pass per row; `laya()` batches several questions
+- Scalar functions run one forward pass per row; `decide()` batches several questions
   about the same row. Cross-row batching is not available.
 - Strict FP32 on the CPU is slow for a 28-layer encoder. Use the CUDA build for
   table-scale workloads, and load the model before any other CUDA user in the backend.

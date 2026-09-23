@@ -28,14 +28,15 @@ def connect(path=":memory:"):
 
 db = connect()
 
+# Compared against a sorted query of the registered functions, so keep sorted.
 FUNCTIONS = [
-  "laya",
-  "dq_backend",
   "choice",
+  "decide",
+  "dq_backend",
   "dq_load",
+  "dq_version",
   "noul",
   "score",
-  "dq_version",
 ]
 
 MODULES = []
@@ -102,15 +103,15 @@ class TestCases(unittest.TestCase):
     with self.assertRaisesRegex(sqlite3.OperationalError, "score criteria must be valid JSON"):
       scalar("select score('state', 'question', '{')")
 
-  def test_laya(self):
-    self.assertIsNone(scalar("select laya(NULL, '{}')"))
-    self.assertIsNone(scalar("select laya('state', NULL)"))
+  def test_decide(self):
+    self.assertIsNone(scalar("select decide(NULL, '{}')"))
+    self.assertIsNone(scalar("select decide('state', NULL)"))
     with self.assertRaisesRegex(sqlite3.OperationalError, "laya questions must be valid JSON"):
-      scalar("select laya('state', 'nope')")
+      scalar("select decide('state', 'nope')")
     with self.assertRaisesRegex(sqlite3.OperationalError, "nonempty JSON object"):
-      scalar("select laya('state', '{}')")
+      scalar("select decide('state', '{}')")
     with self.assertRaisesRegex(sqlite3.OperationalError, "nonempty JSON object"):
-      scalar("select laya('state', '[1]')")
+      scalar("select decide('state', '[1]')")
 
   def test_no_model_error(self):
     # A fresh process with no resident model and no checkpoint at DQ_MODEL_DIR.
@@ -162,8 +163,8 @@ class TestModel(unittest.TestCase):
     self.assertGreaterEqual(score, 0.0)
     self.assertLessEqual(score, 2.0)
 
-  def test_laya(self):
-    answers = json.loads(scalar("select laya(json(?), ?)", json.dumps(BILLING_STATE), json.dumps(BILLING_QUESTIONS)))
+  def test_decide(self):
+    answers = json.loads(scalar("select decide(json(?), ?)", json.dumps(BILLING_STATE), json.dumps(BILLING_QUESTIONS)))
     self.assertEqual(list(answers), ["department", "urgency", "refund"])
     self.assertEqual(answers["department"]["choice"], "billing")
     self.assertEqual(list(answers["department"]["probabilities"]), ["billing", "technical", "sales"])
@@ -171,10 +172,10 @@ class TestModel(unittest.TestCase):
     self.assertIn("score", answers["urgency"])
     self.assertIn("noul", answers["refund"])
     # The result carries the JSON subtype, so json functions nest it without re-quoting.
-    wrapped = json.loads(scalar("select json_object('answers', laya('Thanks!', ?))",
+    wrapped = json.loads(scalar("select json_object('answers', decide('Thanks!', ?))",
                                 json.dumps({"complaint": {"type": "noul", "instructions": "Is this a complaint?"}})))
     self.assertIn("noul", wrapped["answers"]["complaint"])
-    self.assertEqual(scalar("select json_extract(laya(?, ?), '$.department.choice')",
+    self.assertEqual(scalar("select json_extract(decide(?, ?), '$.department.choice')",
                             BILLING_STATE["body"], json.dumps(BILLING_QUESTIONS)), "billing")
 
   def test_table_scan(self):
@@ -204,7 +205,7 @@ class TestModel(unittest.TestCase):
     self.assertEqual(len(lines), len(cases))
     for case, line in zip(cases, lines):
       expected = line["results"][0]["answers"]
-      actual = json.loads(scalar("select laya(json(?), ?)", json.dumps(case["state"]), json.dumps(case["questions"])))
+      actual = json.loads(scalar("select decide(json(?), ?)", json.dumps(case["state"]), json.dumps(case["questions"])))
       self.assertEqual(list(actual), list(expected))
       for question, answer in expected.items():
         self.assert_close(answer, actual[question], f"{case['id']}.{question}")

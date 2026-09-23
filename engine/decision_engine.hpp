@@ -33,7 +33,7 @@ namespace dq {
   using json = laya::json;
 
   constexpr const char *NOT_LOADED
-      = "No Laya model loaded; call dq_load(dir) or set DQ_MODEL_DIR";
+      = "No decision backend loaded; call dq_load(dir_or_url) or set DQ_MODEL_DIR";
 
   struct load_options {
     std::string variant = "english";

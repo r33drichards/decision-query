@@ -1,5 +1,5 @@
--- Laya typed decisions as SQL functions.
-\echo Use "CREATE EXTENSION laya" to load this file. \quit
+-- Typed decisions as SQL functions.
+\echo Use "CREATE EXTENSION decision_query" to load this file. \quit
 
 CREATE FUNCTION dq_version()
     RETURNS text
