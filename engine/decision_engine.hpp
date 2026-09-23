@@ -69,7 +69,7 @@ namespace dq {
                    : key == "flash"       ? &options.flash
                    : key == "tensor_core" ? &options.tensor_core
                                           : nullptr;
-      if (!flag) throw std::invalid_argument("Unknown laya option: " + key);
+      if (!flag) throw std::invalid_argument("Unknown option: " + key);
       if (item.is_boolean())
         *flag = item.get<bool>();
       else if (item.is_number_integer())

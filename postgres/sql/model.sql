@@ -21,7 +21,7 @@ BEGIN
   ASSERT choice(jsonb_build_object('subject', 'Duplicate invoice', 'body', body),
                      'Which department should handle this?', departments) = 'billing';
   ASSERT score(body, 'How urgent is the request?', '["not urgent", "soon", "immediate"]') BETWEEN 0 AND 2;
-  answers := laya(jsonb_build_object('subject', 'Duplicate invoice', 'body', body), jsonb_build_object(
+  answers := decide(jsonb_build_object('subject', 'Duplicate invoice', 'body', body), jsonb_build_object(
     'department', jsonb_build_object('type', 'choice', 'instructions', 'Which department should handle this?', 'criteria', departments),
     'urgency', jsonb_build_object('type', 'score', 'instructions', 'How urgent is the request?', 'criteria', '["not urgent", "soon", "immediate"]'::jsonb),
     'refund', jsonb_build_object('type', 'noul', 'instructions', 'Does the customer request a refund?')));
@@ -40,6 +40,6 @@ INSERT INTO tickets(body) VALUES
 SELECT id FROM tickets WHERE noul(body, 'Does the customer request a refund?') > 0.5 ORDER BY id;
 SELECT id, choice(body, 'Which department should handle this?', '["billing", "technical", "sales"]') AS department
   FROM tickets WHERE id IN (1, 3) ORDER BY id;
-SELECT id, laya(body, '{"refund": {"type": "noul", "instructions": "Does the customer request a refund?"}}') -> 'refund' ? 'noul' AS answered
+SELECT id, decide(body, '{"refund": {"type": "noul", "instructions": "Does the customer request a refund?"}}') -> 'refund' ? 'noul' AS answered
   FROM tickets ORDER BY id;
 DROP TABLE tickets;

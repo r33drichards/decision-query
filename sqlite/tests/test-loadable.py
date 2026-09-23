@@ -75,13 +75,13 @@ class TestCases(unittest.TestCase):
 
   def test_dq_load(self):
     with self.assertRaisesRegex(sqlite3.OperationalError, "Not a checkpoint directory"):
-      scalar("select dq_load('/nonexistent/laya')")
-    with self.assertRaisesRegex(sqlite3.OperationalError, "Unknown laya option"):
-      scalar("select dq_load('/nonexistent/laya', '{\"gpu\": true}')")
+      scalar("select dq_load('/nonexistent/checkpoint')")
+    with self.assertRaisesRegex(sqlite3.OperationalError, "Unknown option"):
+      scalar("select dq_load('/nonexistent/checkpoint', '{\"gpu\": true}')")
     with self.assertRaisesRegex(sqlite3.OperationalError, "Unknown model variant"):
-      scalar("select dq_load('/nonexistent/laya', '{\"variant\": \"french\"}')")
+      scalar("select dq_load('/nonexistent/checkpoint', '{\"variant\": \"french\"}')")
     with self.assertRaisesRegex(sqlite3.OperationalError, "must be valid JSON"):
-      scalar("select dq_load('/nonexistent/laya', 'nope')")
+      scalar("select dq_load('/nonexistent/checkpoint', 'nope')")
     with self.assertRaisesRegex(sqlite3.OperationalError, "requires a checkpoint directory"):
       scalar("select dq_load(NULL)")
 
@@ -119,11 +119,11 @@ class TestCases(unittest.TestCase):
       "import sqlite3; db = sqlite3.connect(':memory:'); db.enable_load_extension(True); "
       f"db.load_extension({EXT_PATH!r}); db.execute(\"select noul('state', 'question')\")"
     )
-    env = dict(os.environ, DQ_MODEL_DIR="/nonexistent/laya")
+    env = dict(os.environ, DQ_MODEL_DIR="/nonexistent/checkpoint")
     env.pop("DQ_OPTIONS", None)
     result = subprocess.run([sys.executable, "-c", script], env=env, capture_output=True, text=True)
     self.assertNotEqual(result.returncode, 0)
-    self.assertIn("No Laya model loaded; call dq_load(dir) or set DQ_MODEL_DIR", result.stderr)
+    self.assertIn("No decision backend loaded; call dq_load(dir_or_url) or set DQ_MODEL_DIR", result.stderr)
 
 
 @unittest.skipUnless(MODEL_DIR, "set DQ_MODEL_DIR to a checkpoint directory to run model-backed tests")
