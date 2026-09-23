@@ -82,8 +82,8 @@ ERROR:  No decision backend loaded; call dq_load(dir_or_url) or set DQ_MODEL_DIR
 -- Settings are validated and reserved under the decide prefix.
 SET decision_query.options = '{"cuda": false}';
 SHOW decision_query.options;
-  decision_query.options   
------------------
+ decision_query.options 
+------------------------
  {"cuda": false}
 (1 row)
 
