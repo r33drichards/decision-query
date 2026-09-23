@@ -22,11 +22,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-      - run: sudo apt-get update && sudo apt-get install -y $DEPS
+      - run: sudo apt-get update && sudo apt-get install -y $DEPS libclang-rt-18-dev
       # clang-tidy needs compile_commands.json and the generated headers,
-      # which configuring alone produces.
+      # which configuring alone produces. The fuzz targets need clang.
       - run: >-
-          cmake -S . -B build -G Ninja -DDQ_POSTGRES=ON -DDQ_BUILD_TESTS=ON
+          cmake -S . -B build -G Ninja -DDQ_POSTGRES=ON -DDQ_BUILD_TESTS=ON -DDQ_BUILD_FUZZ_TESTS=ON
+        env:
+          CC: clang
+          CXX: clang++
       - uses: cpp-linter/cpp-linter-action@v2
         id: linter
         env:
@@ -39,6 +42,9 @@ jobs:
           database: build
           lines-changed-only: true
           ignore: '.github|laya.cpp|build'
+          # A header has no compile command of its own, so clang-tidy cannot
+          # parse it alone; its code is checked through the sources that include it.
+          ignore-tidy: '.github|laya.cpp|build|engine/decision_engine.hpp'
           step-summary: true
           thread-comments: ${{ github.event_name == 'pull_request' && 'update' }}
       - name: Fail on findings
@@ -62,6 +68,6 @@ jobs:
           --suppress=cppcheckError --suppress=internalAstError --suppress=unmatchedSuppression
           --suppress=passedByValue --suppress=syntaxError --suppress=preprocessorErrorDirective
           --suppress=knownConditionTrueFalse
-          --suppress='*:*/laya.cpp/*' --suppress='*:*/_deps/*' --suppress='*:/usr/*'
+          --suppress='*:laya.cpp/*' --suppress='*:build/_deps/*' --suppress='*:/usr/*'
           -i laya.cpp -i build/_deps
           --error-exitcode=2 --template=gcc
