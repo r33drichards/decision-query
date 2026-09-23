@@ -41,6 +41,11 @@ jobs:
       - run: make postgres
       - run: sudo make postgres-install
       - run: make test-postgres
+      # pg_regress writes the diff to a file and prints only its path, so a
+      # failure in CI is otherwise undiagnosable from the log alone.
+      - name: Show the regression diff
+        if: failure()
+        run: cat build/postgres/regression.diffs || true
       - uses: actions/upload-artifact@v4
         with:
           name: pgdq-linux-x86_64
