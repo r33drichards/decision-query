@@ -8,7 +8,10 @@
 #
 # The consequence is deliberate and worth stating plainly: a pull request from
 # a fork can merge without the remote backend ever having been exercised.
-# integration-laya still runs in full on forks, since it needs no secret.
+# integration-local still runs in full on forks, since it needs no secret.
+#
+# A PR that touches no code (see the first step) skips the test and passes
+# without the integration-test label, from a fork or not.
 name: integration-remote
 on:
   pull_request:
@@ -17,6 +20,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  pull-requests: read
 concurrency:
   group: integration-remote-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -25,7 +29,39 @@ jobs:
     name: remote-backend
     runs-on: ubuntu-latest
     steps:
-      # First, so a fork is never blocked by the label gate on a job that
+      # A change that cannot affect the build (docs, Markdown, lint config,
+      # other workflows) needs no integration test, so the check passes without
+      # the label. Anything not listed counts as code, so a new kind of file is
+      # tested until someone decides otherwise.
+      - name: Check whether this PR touches code
+        id: code
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHANGED: ${{ github.event.pull_request.changed_files }}
+        run: |
+          # The files API lists at most 3000 files; past that, assume code.
+          if [ "$CHANGED" -ge 3000 ]; then
+            echo "touches=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=$(gh api --paginate \
+            "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            --jq '.[] | .filename, (.previous_filename // empty)')
+          touches=false
+          while IFS= read -r f; do
+            case "$f" in
+              .github/workflows/integration-*) touches=true; echo "Code change: $f" ;;
+              *.md|docs/*|LICENSE|.gitignore|.clang-format|.clang-tidy) ;;
+              .github/dependabot.yml|.github/workflows/*) ;;
+              *) touches=true; echo "Code change: $f" ;;
+            esac
+          done <<< "$files"
+          if [ "$touches" = false ]; then
+            echo "::notice::No code changed, so the integration test was skipped. It runs, and needs the integration-test label, once a PR touches code."
+          fi
+          echo "touches=$touches" >> "$GITHUB_OUTPUT"
+      # Before the label gate, so a fork is never blocked by it on a job that
       # cannot run for it anyway.
       - name: Check whether this PR can reach the secret
         id: gate
@@ -33,7 +69,9 @@ jobs:
           # Only a pull request can come from a fork. On a manual run the
           # pull_request context is empty, which would otherwise look like a
           # fork and silently skip the whole test.
-          if [ "${{ github.event_name }}" = "pull_request" ] \
+          if [ "${{ steps.code.outputs.touches }}" = "false" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "pull_request" ] \
              && [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
             echo "::notice::Pull request is from a fork, which GitHub does not give repository secrets. The remote backend was NOT tested. A maintainer should re-run this from a branch in this repository before trusting it."
             echo "skip=true" >> "$GITHUB_OUTPUT"

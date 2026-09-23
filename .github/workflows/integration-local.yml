@@ -1,8 +1,9 @@
 # Integration test against a local Laya checkpoint, in-process, no network.
 #
-# The job always runs so its check context always reports; a PR without the
-# integration-test label fails at the gate with an actionable message rather
-# than hanging forever as an unreported required check.
+# The job always runs so its check context always reports; a PR that touches
+# code but lacks the integration-test label fails at the gate with an
+# actionable message rather than hanging forever as an unreported required
+# check. A PR that touches no code passes without running anything.
 name: integration-local
 on:
   pull_request:
@@ -11,6 +12,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  pull-requests: read
 concurrency:
   group: integration-local-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -19,29 +21,69 @@ jobs:
     name: local-backend
     runs-on: ubuntu-latest
     steps:
+      # A change that cannot affect the build (docs, Markdown, lint config,
+      # other workflows) needs no integration test, so the check passes without
+      # the label. Anything not listed counts as code, so a new kind of file is
+      # tested until someone decides otherwise.
+      - name: Check whether this PR touches code
+        id: code
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHANGED: ${{ github.event.pull_request.changed_files }}
+        run: |
+          # The files API lists at most 3000 files; past that, assume code.
+          if [ "$CHANGED" -ge 3000 ]; then
+            echo "touches=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=$(gh api --paginate \
+            "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            --jq '.[] | .filename, (.previous_filename // empty)')
+          touches=false
+          while IFS= read -r f; do
+            case "$f" in
+              .github/workflows/integration-*) touches=true; echo "Code change: $f" ;;
+              *.md|docs/*|LICENSE|.gitignore|.clang-format|.clang-tidy) ;;
+              .github/dependabot.yml|.github/workflows/*) ;;
+              *) touches=true; echo "Code change: $f" ;;
+            esac
+          done <<< "$files"
+          if [ "$touches" = false ]; then
+            echo "::notice::No code changed, so the integration test was skipped. It runs, and needs the integration-test label, once a PR touches code."
+          fi
+          echo "touches=$touches" >> "$GITHUB_OUTPUT"
       - name: Require the integration-test label
-        if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'integration-test') }}
+        if: ${{ github.event_name == 'pull_request' && steps.code.outputs.touches != 'false' && !contains(github.event.pull_request.labels.*.name, 'integration-test') }}
         run: |
           echo "::error::Integration tests have not run. Add the 'integration-test' label to this PR."
           exit 1
       - uses: actions/checkout@v7
+        if: ${{ steps.code.outputs.touches != 'false' }}
         with:
           submodules: recursive
-      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libicu-dev nlohmann-json3-dev libsqlite3-dev libssl-dev sqlite3
+      - if: ${{ steps.code.outputs.touches != 'false' }}
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libicu-dev nlohmann-json3-dev libsqlite3-dev libssl-dev sqlite3
       - uses: actions/setup-python@v7
+        if: ${{ steps.code.outputs.touches != 'false' }}
         with:
           python-version: "3.12"
-      - run: pip install huggingface_hub
+      - if: ${{ steps.code.outputs.touches != 'false' }}
+        run: pip install huggingface_hub
       # The checkpoint is ~840 MB and pinned in the Makefile, so key the cache
       # on the Makefile rather than re-downloading it on every run.
       - uses: actions/cache@v6
+        if: ${{ steps.code.outputs.touches != 'false' }}
         with:
           path: models/laya
           key: laya-checkpoint-${{ hashFiles('Makefile') }}
       - name: Fetch the pinned checkpoint
+        if: ${{ steps.code.outputs.touches != 'false' }}
         run: test -d models/laya || make model
-      - run: make loadable
+      - if: ${{ steps.code.outputs.touches != 'false' }}
+        run: make loadable
       - name: Decision checks against the local checkpoint
+        if: ${{ steps.code.outputs.touches != 'false' }}
         run: |
           python3 .github/scripts/integration_test.py \
             --extension dist/debug/decision_query \
