@@ -131,6 +131,20 @@ postgres-install: postgres
 test-postgres:
 	ctest --test-dir $(BUILD) --output-on-failure -LE 'unit|fuzz'
 
+# MySQL loadable functions (mysql/), built in the same tree
+mysql:
+	cmake -S . -B $(BUILD) $(CMAKE_FLAGS) -DDQ_MYSQL=ON && cmake --build $(BUILD) --parallel --target dq-mysql
+
+# Copies decision_query.so into the plugin_dir reported by mysql_config (may
+# need sudo); register the functions afterwards with mysql/install.sql.
+mysql-install: mysql
+	cmake --install $(BUILD) --component mysql
+
+# Starts a throwaway mysqld against the build tree; set DQ_MODEL_DIR to add
+# the model-backed checks.
+test-mysql:
+	$(PYTHON) mysql/tests/test-mysql.py --plugin-dir $(BUILD)/mysql
+
 # Native unit tests (tests/); need no checkpoint. Add sanitizers with e.g.
 # CMAKE_FLAGS='-DDQ_ENABLE_SANITIZER_ADDRESS=ON -DDQ_ENABLE_SANITIZER_UNDEFINED=ON'.
 test-native:
@@ -163,5 +177,6 @@ test:
 .PHONY: clean test \
 	loadable loadable-release static static-release cli \
 	python python-release python-versions model \
-	postgres postgres-install test-postgres test-loadable test-python \
+	postgres postgres-install test-postgres mysql mysql-install test-mysql \
+	test-loadable test-python \
 	test-native memcheck fuzz

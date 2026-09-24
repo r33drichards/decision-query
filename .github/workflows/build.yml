@@ -53,3 +53,26 @@ jobs:
             build/postgres/decision_query.so
             build/postgres/decision_query.control
             postgres/decision_query--*.sql
+  mysql-linux-x86_64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libicu-dev nlohmann-json3-dev libmysqlclient-dev mysql-server-8.0
+      # The test runs its own mysqld from a temporary data directory with the
+      # build tree as plugin_dir. The packaged AppArmor profile confines
+      # /usr/sbin/mysqld to the system paths, so unload it, and stop the
+      # service the package started.
+      - run: |
+          sudo systemctl stop mysql || true
+          sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.mysqld || true
+      - run: make mysql
+      - run: make test-mysql
+      - uses: actions/upload-artifact@v7
+        with:
+          name: decision-query-mysql-linux-x86_64
+          path: |
+            build/mysql/decision_query.so
+            mysql/install.sql
+            mysql/uninstall.sql

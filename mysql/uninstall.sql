@@ -1,0 +1,9 @@
+-- Removes the decision_query loadable functions.
+DROP FUNCTION IF EXISTS dq_version;
+DROP FUNCTION IF EXISTS dq_backend;
+DROP FUNCTION IF EXISTS dq_last_error;
+DROP FUNCTION IF EXISTS dq_load;
+DROP FUNCTION IF EXISTS noul;
+DROP FUNCTION IF EXISTS choice;
+DROP FUNCTION IF EXISTS score;
+DROP FUNCTION IF EXISTS decide;

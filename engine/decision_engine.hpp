@@ -208,6 +208,14 @@ namespace dq {
       return agent ? backend : std::string();
     }
 
+    // Loads from the fallback directory and options, then the environment, unless a
+    // model is already resident. Lets a caller report a missing model up front.
+    void ensure_loaded(const std::string &fallback_dir = {},
+                       const std::string &fallback_options = {}) {
+      std::lock_guard<std::mutex> lock(mutex);
+      if (!agent) load_fallback(fallback_dir, fallback_options);
+    }
+
     // Runs one request through the resident model and returns its answers object.
     // Loads from the fallback directory and options, then the environment, when
     // no model is resident.
