@@ -89,3 +89,19 @@ jobs:
             --extension dist/debug/decision_query \
             --backend models/laya \
             --profile laya
+      # The same checkpoint, loaded by the MySQL loadable functions inside a
+      # throwaway mysqld (see the build workflow for why AppArmor is unloaded).
+      - name: Install MySQL
+        if: ${{ steps.code.outputs.touches != 'false' }}
+        run: |
+          sudo apt-get install -y libmysqlclient-dev mysql-server-8.0
+          sudo systemctl stop mysql || true
+          sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.mysqld || true
+      - if: ${{ steps.code.outputs.touches != 'false' }}
+        run: make mysql
+      - name: Decision checks through MySQL against the local checkpoint
+        if: ${{ steps.code.outputs.touches != 'false' }}
+        env:
+          DQ_MODEL_DIR: models/laya
+          DQ_OPTIONS: '{"cuda": false}'
+        run: make test-mysql

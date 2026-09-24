@@ -1,6 +1,6 @@
 # decision-query
 
-Typed decisions as SQL functions, for SQLite and PostgreSQL. Ask a yes/no question,
+Typed decisions as SQL functions, for SQLite, PostgreSQL and MySQL. Ask a yes/no question,
 pick from named options, or place a row on a rubric, and get calibrated probabilities
 back -- so a table of text can be classified, scored or filtered without leaving the
 database.
@@ -19,9 +19,13 @@ select id from tickets where noul(body, 'Does the customer request a refund?') >
 CREATE EXTENSION decision_query;
 SET decision_query.model_dir = '/srv/models/laya';
 SELECT id FROM tickets WHERE noul(body, 'Does the customer request a refund?') > 0.5;
+
+-- MySQL, after `mysql -u root < mysql/install.sql`
+SELECT dq_load('/srv/models/laya');
+SELECT id FROM tickets WHERE noul(body, 'Does the customer request a refund?') > 0.5;
 ```
 
-Both modules provide `dq_load`, `dq_backend`, `dq_version`, `noul`,
+All three modules provide `dq_load`, `dq_backend`, `dq_version`, `noul`,
 `choice`, `score` and `decide()`, which returns the full answers object as JSON.
 
 ## Layout
@@ -32,6 +36,7 @@ Both modules provide `dq_load`, `dq_backend`, `dq_version`, `noul`,
 | [`laya.cpp/`](laya.cpp/) | Git submodule with the native runtime, tokenizers and the `laya-cli` tool. |
 | [`sqlite/`](sqlite/README.md) | SQLite loadable module, static library, Python wheel and tests. |
 | [`postgres/`](postgres/README.md) | PostgreSQL extension built from the [pg_extension](https://github.com/mkindahl/pg_extension) CMake template, with pg_regress tests. |
+| [`mysql/`](mysql/README.md) | MySQL loadable functions, install scripts and a test that runs them in a throwaway `mysqld`. |
 | [`tests/`](tests/) | Native Catch2 unit tests for the engine, the HTTP backend and the SQLite functions; no checkpoint needed. |
 | [`fuzz/`](fuzz/) | libFuzzer targets with seed corpora, run in CI by [ClusterFuzzLite](.clusterfuzzlite/). |
 | [`cmake/`](cmake/) | Warning, sanitizer and libFuzzer modules vendored from [cpp-best-practices/cmake_template](https://github.com/cpp-best-practices/cmake_template). |
@@ -42,8 +47,8 @@ runtime compile once. Each module directory also configures on its own.
 ## Build
 
 Requirements: a C++20 compiler, CMake 3.24+, ICU and nlohmann-json; the SQLite extension
-headers for `sqlite/`; PostgreSQL server development files for `postgres/`; optionally
-the CUDA toolkit. On Debian-like systems:
+headers for `sqlite/`; PostgreSQL server development files for `postgres/`; the MySQL
+client development headers for `mysql/`; optionally the CUDA toolkit. On Debian-like systems:
 
 ```sh
 sudo apt-get install cmake ninja-build libicu-dev nlohmann-json3-dev libsqlite3-dev \
@@ -53,13 +58,16 @@ cd decision-query
 make loadable static        # SQLite: dist/debug/decision_query.so, libdecision_query.a, decision_query.h
 make postgres               # PostgreSQL: build/postgres/decision_query.so and decision_query.control
 sudo make postgres-install  # into the directories reported by pg_config
+make mysql                  # MySQL: build/mysql/decision_query.so (needs libmysqlclient-dev)
+sudo make mysql-install     # into the plugin_dir reported by mysql_config
 ```
 
 The CUDA backend is enabled automatically when CMake finds a CUDA compiler. Force a
 choice with `CMAKE_FLAGS='-DDQ_CUDA=OFF' make loadable` or `-DDQ_CUDA=ON`,
 adding `-DCMAKE_CUDA_ARCHITECTURES=<arch>` for your GPU as described in the laya.cpp README.
 The PostgreSQL module is configured automatically when `pg_config` and the server headers
-are found; `-DDQ_POSTGRES=OFF` skips it.
+are found; `-DDQ_POSTGRES=OFF` skips it. Likewise the MySQL module is configured when
+`udf_registration_types.h` is found; `-DDQ_MYSQL=OFF` skips it.
 
 ## Models
 
@@ -167,6 +175,7 @@ make test-loadable                                     # SQLite, no checkpoint n
 DQ_MODEL_DIR=models/laya make cli test-loadable      # SQLite with checkpoint and CLI parity
 DQ_MODEL_DIR=models/laya DQ_OPTIONS='{"cuda": false}' make postgres
 sudo make postgres-install && make test-postgres       # pg_regress, not as root
+DQ_MODEL_DIR=models/laya make mysql test-mysql         # throwaway mysqld; checkpoint optional
 ```
 
 The native unit tests run under the sanitizers and valgrind as well, and the fuzz
@@ -200,8 +209,8 @@ fuzz each pull request for ten minutes and main for an hour a day.
   roughly five times the latency. See [Metal](laya.cpp/docs/precision.md#apple-metal).
 - When built with CUDA, load the model before other CUDA users in the same process; the
   runtime disables TF32 before initializing cuBLAS.
-- SQLite keeps one model per process; PostgreSQL backends each load their own copy. See
-  the module READMEs.
+- SQLite and MySQL keep one model per process; PostgreSQL backends each load their own
+  copy. See the module READMEs.
 
 ## License
 

@@ -105,3 +105,20 @@ TEST_CASE("http backend reports an unreachable endpoint", "[http]") {
   engine.load("http://127.0.0.1:" + std::to_string(port) + "/decide", json());
   CHECK_THROWS_WITH(engine.answers("state", questions()), ContainsSubstring("unreachable"));
 }
+
+TEST_CASE("ensure_loaded reports a missing fallback and loads a present one", "[http]") {
+  dq::engine engine;
+  CHECK_THROWS_WITH(engine.ensure_loaded("/nonexistent/checkpoint"),
+                    ContainsSubstring("No decision backend loaded"));
+  CHECK(engine.backend_name().empty());
+
+  fake_endpoint endpoint;
+  engine.ensure_loaded(endpoint.url(), R"({"model": "reflex-4b"})");
+  CHECK(engine.backend_name() == "remote");
+  CHECK(endpoint.last_body.is_null());  // Loading sends nothing.
+
+  // A resident backend is kept; the fallback is not consulted again.
+  engine.ensure_loaded("/nonexistent/checkpoint");
+  CHECK(engine.answers("state", questions()).at("q").at("noul") == 0.75);
+  CHECK(endpoint.last_body.at("model") == "reflex-4b");
+}
