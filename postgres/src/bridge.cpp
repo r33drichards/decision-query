@@ -56,7 +56,7 @@ extern "C" int pgdq_evaluate(const pgdq_request *request,
     const json state =
         value_of(request->state, request->state_is_json, "state");
     if (!request->type) {
-      const json questions = parse(request->questions, "laya questions");
+      const json questions = parse(request->questions, "questions");
       if (!questions.is_object() || questions.empty())
         throw std::invalid_argument(
             "questions must be a nonempty JSON object");
@@ -71,7 +71,7 @@ extern "C" int pgdq_evaluate(const pgdq_request *request,
                                request->instructions_is_json, "instructions")}};
     if (request->criteria)
       question["criteria"] =
-          parse(request->criteria, "laya_" + type + " criteria");
+          parse(request->criteria, type + " criteria");
     json questions = json::object();
     questions["q"] = std::move(question);
     const json answer =
